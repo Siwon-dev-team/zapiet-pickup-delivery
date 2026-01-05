@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model Location {
+  id              String   @id @default(uuid())
+  shop            String
+  name            String
+  address         String
+  city            String?
+  zip             String?
+  country         String?
+  isPickup        Boolean  @default(false)
+  isDelivery      Boolean  @default(false)
+  // Store hours as a JSON string: { "monday": "9-5", "tuesday": "9-5", ... }
+  businessHours   String   @default("{}") 
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  rates           Rate[]
+}
+
+model Rate {
+  id          String   @id @default(uuid())
+  locationId  String
+  name        String
+  type        String   // "PRICE" or "WEIGHT"
+  min         Float    // Min price or weight condition
+  max         Float?   // Max price or weight (optional)
+  price       Float    // Cost of shipping
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id                            String  @id @default(uuid())
+  shop                          String  @unique
+  enablePickup                  Boolean @default(true)
+  enableDelivery                Boolean @default(false)
+  pickupTitle                   String  @default("Store Pickup")
+  deliveryTitle                 String  @default("Local Delivery")
+  // Appearance
+  primaryColor                  String  @default("#008060")
+  logoUrl                       String  @default("")
+  // Activation Conditions (JSON strings)
+  pickupActivationConditions    String  @default("{}")
+  deliveryActivationConditions  String  @default("{}")
+  // Auto-tagging
+  autoTagPickup                 String  @default("")
+  autoTagDelivery               String  @default("")
+  // Security & Validation
+  enableSecurityCode            Boolean @default(true)
+  postalCodeValidation          String  @default("none")
+  // Additional Settings
+  enablePickupNote              Boolean @default(false)
+  enableDeliveryNote            Boolean @default(false)
+  preselectLocation             String  @default("")
+  locationSortOrder             String  @default("newest")
+  fallbackRate                  Float   @default(0)
+}
