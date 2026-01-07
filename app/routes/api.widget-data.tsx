@@ -41,6 +41,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     },
     orderBy
   });
+  
+  // Get all rates for the shop (through location relationship)
+  const rates = await db.rate.findMany({
+    where: { 
+      location: { shop }
+    },
+    select: {
+      id: true,
+      locationId: true,
+      name: true,
+      type: true,
+      min: true,
+      max: true,
+      price: true
+    }
+  });
 
   const s = settings as any; // Type cast to avoid TypeScript LSP cache issues
   
@@ -60,7 +76,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         preselectLocation: s?.preselectLocation ?? "",
         fallbackRate: s?.fallbackRate ?? 0,
     },
-    locations
+    locations,
+    rates
   }, {
       headers: {
           "Access-Control-Allow-Origin": "*",

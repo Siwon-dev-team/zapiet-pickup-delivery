@@ -23,27 +23,33 @@
     
     <!-- Pickup Panel -->
     <div class="zapiet-panel" id="panel-pickup" style="display:none;">
-      <label class="zapiet-label">Choose a location:</label>
-      <select id="zapiet-location-select" class="zapiet-select">
-        <option value="">Select a store...</option>
-      </select>
+      <p class="zapiet-instruction">Please select a pickup location:</p>
       
-      <div id="zapiet-pickup-details" style="display:none; margin-top: 15px;">
-        <div class="zapiet-store-info">
-          <svg class="zapiet-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-          </svg>
-          <p id="zapiet-store-address"></p>
-        </div>
-        
+      <div id="zapiet-location-list" class="zapiet-location-list">
+        <!-- Location radio buttons will be inserted here -->
+      </div>
+      
+      <div id="zapiet-pickup-datetime" style="display:none; margin-top: 20px;">
         <div class="zapiet-datetime">
           <div class="zapiet-field">
-            <label class="zapiet-label">Pickup Date:</label>
+            <label class="zapiet-label">
+              <svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+              </svg>
+              Pickup Date:
+            </label>
             <input type="date" id="zapiet-pickup-date" class="zapiet-input" required />
           </div>
           <div class="zapiet-field">
-            <label class="zapiet-label">Pickup Time:</label>
-            <input type="time" id="zapiet-pickup-time" class="zapiet-input" required />
+            <label class="zapiet-label">
+              <svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+              </svg>
+              Pickup Time:
+            </label>
+            <select id="zapiet-pickup-time" class="zapiet-select" required>
+              <option value="">Select time...</option>
+            </select>
           </div>
         </div>
         
@@ -52,33 +58,65 @@
           <textarea id="zapiet-pickup-note" class="zapiet-input" rows="3" placeholder="Any special instructions..."></textarea>
         </div>
       </div>
+      
+      <div id="zapiet-pickup-rate" class="zapiet-rate-display" style="display:none;">
+        <!-- Rate will be displayed here -->
+      </div>
     </div>
 
     <!-- Delivery Panel -->
     <div class="zapiet-panel" id="panel-delivery" style="display:none;">
-      <label class="zapiet-label">Delivery Address:</label>
-      <input type="text" id="zapiet-delivery-address" class="zapiet-input" placeholder="Street Address" />
+      <label class="zapiet-label">
+        Enter your postal code (first 3 digits) to check if you are eligible for local delivery:
+      </label>
       
-      <label class="zapiet-label">Postal Code:</label>
-      <input type="text" id="zapiet-postal-code" class="zapiet-input" placeholder="Enter postal code" />
-      <button type="button" id="zapiet-check-delivery" class="zapiet-button">Check Availability</button>
-      
-      <div id="zapiet-delivery-result"></div>
-      
-      <div class="zapiet-datetime" style="display:none;" id="zapiet-delivery-datetime">
-        <div class="zapiet-field">
-          <label class="zapiet-label">Delivery Date:</label>
-          <input type="date" id="zapiet-delivery-date" class="zapiet-input" />
-        </div>
-        <div class="zapiet-field">
-          <label class="zapiet-label">Delivery Time:</label>
-          <input type="time" id="zapiet-delivery-time" class="zapiet-input" />
-        </div>
+      <div style="display: flex; gap: 10px; align-items: flex-start;">
+        <input type="text" id="zapiet-postal-code" class="zapiet-input" placeholder="e.g., V5R" style="margin-bottom: 0; flex: 1;" maxlength="7" />
+        <button type="button" id="zapiet-check-delivery" class="zapiet-button" style="flex-shrink: 0;">
+          <svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+          </svg>
+        </button>
       </div>
       
-      <div id="zapiet-delivery-note-container" style="display:none; margin-top: 15px;">
-        <label class="zapiet-label">Delivery Note (optional):</label>
-        <textarea id="zapiet-delivery-note" class="zapiet-input" rows="3" placeholder="Special delivery instructions..."></textarea>
+      <div id="zapiet-delivery-result" class="zapiet-delivery-result"></div>
+      
+      <div id="zapiet-delivery-available" style="display:none;">
+        <div class="zapiet-datetime" style="margin-top: 20px;">
+          <div class="zapiet-field">
+            <label class="zapiet-label">
+              <svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+              </svg>
+              Delivery Date:
+            </label>
+            <input type="date" id="zapiet-delivery-date" class="zapiet-input" required />
+          </div>
+          <div class="zapiet-field">
+            <label class="zapiet-label">
+              <svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+              </svg>
+              Delivery Time:
+            </label>
+            <select id="zapiet-delivery-time" class="zapiet-select" required>
+              <option value="">Select time...</option>
+              <option value="9:00 AM - 12:00 PM">9:00 AM - 12:00 PM</option>
+              <option value="12:00 PM - 3:00 PM">12:00 PM - 3:00 PM</option>
+              <option value="3:00 PM - 6:00 PM">3:00 PM - 6:00 PM</option>
+              <option value="5:00 PM - 11:00 PM">5:00 PM - 11:00 PM</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="zapiet-delivery-note-container" style="display:none; margin-top: 15px;">
+          <label class="zapiet-label">Delivery Note (optional):</label>
+          <textarea id="zapiet-delivery-note" class="zapiet-input" rows="3" placeholder="Special delivery instructions..."></textarea>
+        </div>
+        
+        <div id="zapiet-delivery-rate" class="zapiet-rate-display" style="display:none; margin-top: 15px;">
+          <!-- Rate will be displayed here -->
+        </div>
       </div>
     </div>
   </div>
@@ -210,6 +248,140 @@
     padding: 20px;
     color: #6b7280;
   }
+  .zapiet-instruction {
+    font-weight: 500;
+    margin-bottom: 15px;
+    color: #374151;
+    font-size: 15px;
+  }
+  .zapiet-location-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .zapiet-location-item {
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .zapiet-location-item:hover {
+    border-color: var(--zapiet-primary-color, #008060);
+    background: #f9fafb;
+  }
+  .zapiet-location-item.selected {
+    border-color: var(--zapiet-primary-color, #008060);
+    background: #ecfdf5;
+  }
+  .zapiet-location-radio {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .zapiet-location-radio:checked + .zapiet-location-content .zapiet-radio-indicator {
+    background: var(--zapiet-primary-color, #008060);
+    border-color: var(--zapiet-primary-color, #008060);
+  }
+  .zapiet-location-radio:checked + .zapiet-location-content .zapiet-radio-indicator:after {
+    display: block;
+  }
+  .zapiet-location-content {
+    display: flex;
+    align-items: start;
+    gap: 12px;
+  }
+  .zapiet-radio-indicator {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    margin-top: 2px;
+    transition: all 0.2s;
+  }
+  .zapiet-radio-indicator:after {
+    content: '';
+    position: absolute;
+    display: none;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: white;
+  }
+  .zapiet-location-info {
+    flex: 1;
+  }
+  .zapiet-location-title {
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 4px;
+    font-size: 15px;
+  }
+  .zapiet-location-address {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .zapiet-location-link {
+    color: var(--zapiet-primary-color, #008060);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .zapiet-location-link:hover {
+    text-decoration: none;
+  }
+  .zapiet-delivery-result {
+    margin-top: 15px;
+  }
+  .zapiet-success-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #ecfdf5;
+    border: 1px solid #10b981;
+    border-radius: 6px;
+    color: #065f46;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .zapiet-error-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: #991b1b;
+    font-size: 14px;
+  }
+  .zapiet-rate-display {
+    padding: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .zapiet-rate-display strong {
+    color: var(--zapiet-primary-color, #008060);
+    font-size: 16px;
+  }
+  .zapiet-icon-inline {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 4px;
+    color: var(--zapiet-primary-color, #008060);
+  }
 </style>
 
 <script>
@@ -333,22 +505,143 @@ document.addEventListener("DOMContentLoaded", function() {
       return;
     }
     
-    // Populate pickup locations
-    const select = document.getElementById('zapiet-location-select');
+    // Populate pickup locations as radio buttons
+    const locationList = document.getElementById('zapiet-location-list');
     const pickupLocations = locations.filter(l => l.isPickup);
-    pickupLocations.forEach(loc => {
-      const opt = document.createElement('option');
-      opt.value = loc.name;
-      opt.dataset.id = loc.id;
-      opt.dataset.address = `${loc.address}${loc.city ? ', ' + loc.city : ''}`;
-      opt.textContent = loc.name;
-      select.appendChild(opt);
+    
+    pickupLocations.forEach((loc, index) => {
+      const locationItem = document.createElement('label');
+      locationItem.className = 'zapiet-location-item';
+      locationItem.dataset.locationId = loc.id;
+      
+      // Format business hours
+      const businessHoursText = formatBusinessHours(loc.businessHours, loc.name);
+      
+      const fullAddress = `${loc.address}${loc.city ? ', ' + loc.city : ''}`;
+      
+      locationItem.innerHTML = `
+        <input type="radio" name="zapiet-location" value="${loc.name}" class="zapiet-location-radio" id="location-${index}" ${index === 0 && settings.preselectLocation === 'first' ? 'checked' : ''} />
+        <div class="zapiet-location-content">
+          <span class="zapiet-radio-indicator"></span>
+          <div class="zapiet-location-info">
+            <div class="zapiet-location-title">${String(index + 1).padStart(2, '0')}. ${businessHoursText}</div>
+            <div class="zapiet-location-address">${fullAddress}</div>
+            <a class="zapiet-location-link" onclick="event.preventDefault(); alert('Location: ${loc.name}\\nAddress: ${fullAddress}\\nHours: ${loc.businessHours || 'Not specified'}');">More information</a>
+          </div>
+        </div>
+      `;
+      
+      locationList.appendChild(locationItem);
+      
+      // Handle selection
+      const radio = locationItem.querySelector('input[type="radio"]');
+      radio.addEventListener('change', function() {
+        document.querySelectorAll('.zapiet-location-item').forEach(item => item.classList.remove('selected'));
+        if (this.checked) {
+          locationItem.classList.add('selected');
+          document.getElementById('attr-location').value = this.value;
+          document.getElementById('zapiet-pickup-datetime').style.display = 'block';
+          
+          // Populate time slots based on business hours
+          populateTimeSlots('zapiet-pickup-time', loc.businessHours);
+          
+          // Calculate and show rate
+          calculatePickupRate(loc.id, data.rates || []);
+        }
+      });
+      
+      // Pre-select first location if setting is enabled
+      if (index === 0 && settings.preselectLocation === 'first') {
+        locationItem.classList.add('selected');
+        document.getElementById('attr-location').value = loc.name;
+        document.getElementById('zapiet-pickup-datetime').style.display = 'block';
+        populateTimeSlots('zapiet-pickup-time', loc.businessHours);
+        calculatePickupRate(loc.id, data.rates || []);
+      }
     });
     
-    // Handle preselect location
-    if (settings.preselectLocation === 'first' && pickupLocations.length > 0) {
-      select.value = pickupLocations[0].name;
-      select.dispatchEvent(new Event('change')); // Trigger change event
+    // Helper function to format business hours
+    function formatBusinessHours(hours, locationName) {
+      if (!hours || hours === '{}') {
+        return `[${locationName}]`;
+      }
+      
+      try {
+        const hoursObj = typeof hours === 'string' ? JSON.parse(hours) : hours;
+        const today = new Date().getDay();
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayName = days[today];
+        
+        // Try to extract time range from hours object
+        if (hoursObj[dayName]) {
+          return `[${dayName}][${locationName}] ${hoursObj[dayName]}`;
+        } else if (hoursObj.default) {
+          return `[${dayName}][${locationName}] ${hoursObj.default}`;
+        }
+        
+        return `[${dayName}][${locationName}]`;
+      } catch (e) {
+        return `[${locationName}]`;
+      }
+    }
+    
+    // Helper function to populate time slots
+    function populateTimeSlots(selectId, businessHours) {
+      const select = document.getElementById(selectId);
+      select.innerHTML = '<option value="">Select time...</option>';
+      
+      // Default time slots
+      const timeSlots = [
+        '9:00 AM - 12:00 PM',
+        '12:00 PM - 3:00 PM',
+        '2:00 PM - 6:00 PM',
+        '3:00 PM - 6:00 PM',
+        '4:00 PM - 7:00 PM',
+        '5:00 PM - 11:00 PM'
+      ];
+      
+      timeSlots.forEach(slot => {
+        const option = document.createElement('option');
+        option.value = slot;
+        option.textContent = slot;
+        select.appendChild(option);
+      });
+    }
+    
+    // Calculate pickup rate
+    function calculatePickupRate(locationId, rates) {
+      const pickupRates = rates.filter(r => r.locationId === locationId);
+      const rateDisplay = document.getElementById('zapiet-pickup-rate');
+      
+      if (pickupRates.length > 0) {
+        // Find applicable rate based on cart total/weight
+        let applicableRate = pickupRates.find(r => {
+          if (r.type.toUpperCase() === 'PRICE') {
+            return cartTotal >= (r.min || 0) && (!r.max || cartTotal <= r.max);
+          } else if (r.type.toUpperCase() === 'WEIGHT') {
+            return cartWeight >= (r.min || 0) && (!r.max || cartWeight <= r.max);
+          }
+          return false;
+        });
+        
+        if (applicableRate) {
+          const price = applicableRate.price === 0 ? 'FREE' : `$${applicableRate.price.toFixed(2)}`;
+          rateDisplay.innerHTML = `<strong>Pickup Rate:</strong> ${price}`;
+          rateDisplay.style.display = 'block';
+          
+          // Save rate to cart attributes
+          document.getElementById('attr-method').value = `Pickup|${applicableRate.price || 0}`;
+        } else {
+          // Use fallback rate
+          const fallback = settings.fallbackRate || 0;
+          rateDisplay.innerHTML = `<strong>Pickup Rate:</strong> $${fallback.toFixed(2)}`;
+          rateDisplay.style.display = 'block';
+          document.getElementById('attr-method').value = `Pickup|${fallback}`;
+        }
+      } else {
+        rateDisplay.style.display = 'none';
+        document.getElementById('attr-method').value = 'Pickup|0';
+      }
     }
     
     // Show/hide note fields based on settings
@@ -369,38 +662,33 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('panel-pickup').style.display = tab === 'pickup' ? 'block' : 'none';
         document.getElementById('panel-delivery').style.display = tab === 'delivery' ? 'block' : 'none';
         
-        methodInput.value = tab === 'Pickup' ? 'Pickup' : 'Delivery';
+        methodInput.value = tab === 'pickup' ? 'Pickup' : 'Delivery';
       });
     });
     
-    // Pickup location change
-    select.addEventListener('change', function() {
-      const selectedOpt = this.options[this.selectedIndex];
-      const details = document.getElementById('zapiet-pickup-details');
-      const locInput = document.getElementById('attr-location');
-      
-      if(this.value) {
-        details.style.display = 'block';
-        document.getElementById('zapiet-store-address').textContent = selectedOpt.dataset.address;
-        locInput.value = this.value;
-        
-        // Set minimum date to tomorrow
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        document.getElementById('zapiet-pickup-date').min = tomorrow.toISOString().split('T')[0];
-      } else {
-        details.style.display = 'none';
-        locInput.value = "";
-      }
-    });
+    // Set minimum date to tomorrow for both pickup and delivery
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const pickupDateInput = document.getElementById('zapiet-pickup-date');
+    const deliveryDateInput = document.getElementById('zapiet-delivery-date');
+    if (pickupDateInput) pickupDateInput.min = tomorrow.toISOString().split('T')[0];
+    if (deliveryDateInput) deliveryDateInput.min = tomorrow.toISOString().split('T')[0];
     
     // Pickup date/time handlers
-    document.getElementById('zapiet-pickup-date').addEventListener('change', function() {
-      document.getElementById('attr-date').value = this.value;
-    });
-    document.getElementById('zapiet-pickup-time').addEventListener('change', function() {
-      document.getElementById('attr-time').value = this.value;
-    });
+    const pickupDateField = document.getElementById('zapiet-pickup-date');
+    const pickupTimeField = document.getElementById('zapiet-pickup-time');
+    
+    if (pickupDateField) {
+      pickupDateField.addEventListener('change', function() {
+        document.getElementById('attr-date').value = this.value;
+      });
+    }
+    
+    if (pickupTimeField) {
+      pickupTimeField.addEventListener('change', function() {
+        document.getElementById('attr-time').value = this.value;
+      });
+    }
     
     // Pickup note handler
     if (settings.enablePickupNote) {
@@ -418,11 +706,13 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Delivery postal code check
     document.getElementById('zapiet-check-delivery').addEventListener('click', function() {
-      const postalCode = document.getElementById('zapiet-postal-code').value.trim();
+      const postalCode = document.getElementById('zapiet-postal-code').value.trim().toUpperCase();
       const resultDiv = document.getElementById('zapiet-delivery-result');
+      const deliveryAvailable = document.getElementById('zapiet-delivery-available');
       
       if (!postalCode) {
-        resultDiv.innerHTML = '<p style="color: #991b1b;">Please enter a postal code.</p>';
+        resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>Please enter a postal code.</div>';
+        deliveryAvailable.style.display = 'none';
         return;
       }
       
@@ -432,46 +722,114 @@ document.addEventListener("DOMContentLoaded", function() {
       
       try {
         const rules = JSON.parse(conditions);
-        if (rules.deliveryZones && rules.deliveryZones.length > 0) {
-          let isValid = false;
-          const postalCodeUpper = postalCode.toUpperCase();
-          
+        let isValid = false;
+        
+        if (!rules.deliveryZones || rules.deliveryZones.length === 0) {
+          // No zones configured, assume all valid
+          isValid = true;
+        } else {
           if (validationMode === 'none') {
             // No validation, allow all
             isValid = true;
           } else if (validationMode === 'partial') {
             // Match first 3 characters
-            const prefix = postalCodeUpper.substring(0, 3);
-            isValid = rules.deliveryZones.some(zone => prefix.startsWith(zone.toUpperCase()));
+            const prefix = postalCode.substring(0, 3);
+            isValid = rules.deliveryZones.some(zone => prefix === zone.toUpperCase().substring(0, 3));
           } else if (validationMode === 'full') {
             // Exact match
-            isValid = rules.deliveryZones.some(zone => postalCodeUpper === zone.toUpperCase());
+            isValid = rules.deliveryZones.some(zone => postalCode === zone.toUpperCase().replace(/\s/g, ''));
           }
-          
-          if (isValid) {
-            resultDiv.innerHTML = '<p style="color: #059669;">✓ Delivery available to your area!</p>';
-            document.getElementById('zapiet-delivery-datetime').style.display = 'grid';
-            document.getElementById('attr-postal-code').value = postalCode;
-          } else {
-            resultDiv.innerHTML = '<p style="color: #991b1b;">✗ Sorry, delivery not available to your postal code.</p>';
-            document.getElementById('zapiet-delivery-datetime').style.display = 'none';
-          }
-        } else {
-          // No zones configured, assume all valid
-          resultDiv.innerHTML = '<p style="color: #059669;">✓ Delivery available!</p>';
-          document.getElementById('zapiet-delivery-datetime').style.display = 'grid';
+        }
+        
+        if (isValid) {
+          resultDiv.innerHTML = '<div class="zapiet-success-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Great! You are eligible for delivery.</div>';
+          deliveryAvailable.style.display = 'block';
           document.getElementById('attr-postal-code').value = postalCode;
+          document.getElementById('attr-method').value = 'Delivery';
+          
+          // Calculate delivery rate
+          calculateDeliveryRate(data.rates || []);
+        } else {
+          resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>Sorry, we do not deliver to your postal code.</div>';
+          deliveryAvailable.style.display = 'none';
         }
       } catch (e) {
-        resultDiv.innerHTML = '<p style="color: #059669;">✓ Delivery available!</p>';
-        document.getElementById('zapiet-delivery-datetime').style.display = 'grid';
+        console.error('Error validating postal code:', e);
+        resultDiv.innerHTML = '<div class="zapiet-success-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Great! You are eligible for delivery.</div>';
+        deliveryAvailable.style.display = 'block';
         document.getElementById('attr-postal-code').value = postalCode;
+        document.getElementById('attr-method').value = 'Delivery';
+        calculateDeliveryRate(data.rates || []);
       }
     });
     
-    // Delivery address handler
-    document.getElementById('zapiet-delivery-address').addEventListener('change', function() {
-      document.getElementById('attr-delivery-address').value = this.value;
+    // Calculate delivery rate
+    function calculateDeliveryRate(rates) {
+      // For delivery, we can use rates from any delivery-enabled location
+      const deliveryLocations = locations.filter(l => l.isDelivery);
+      let deliveryRates = [];
+      
+      // Collect rates from all delivery locations
+      deliveryLocations.forEach(loc => {
+        const locRates = rates.filter(r => r.locationId === loc.id);
+        deliveryRates.push(...locRates);
+      });
+      
+      const rateDisplay = document.getElementById('zapiet-delivery-rate');
+      
+      if (deliveryRates.length > 0) {
+        // Find applicable rate based on cart total/weight
+        let applicableRate = deliveryRates.find(r => {
+          if (r.type.toUpperCase() === 'PRICE') {
+            return cartTotal >= (r.min || 0) && (!r.max || cartTotal <= r.max);
+          } else if (r.type.toUpperCase() === 'WEIGHT') {
+            return cartWeight >= (r.min || 0) && (!r.max || cartWeight <= r.max);
+          }
+          return false;
+        });
+        
+        if (applicableRate) {
+          const price = applicableRate.price === 0 ? 'FREE' : `$${applicableRate.price.toFixed(2)}`;
+          rateDisplay.innerHTML = `<strong>Delivery Rate:</strong> ${price}`;
+          rateDisplay.style.display = 'block';
+          
+          // Save rate to cart attributes
+          document.getElementById('attr-method').value = `Delivery|${applicableRate.price || 0}`;
+        } else {
+          // Use fallback rate
+          const fallback = settings.fallbackRate || 0;
+          rateDisplay.innerHTML = `<strong>Delivery Rate:</strong> $${fallback.toFixed(2)}`;
+          rateDisplay.style.display = 'block';
+          document.getElementById('attr-method').value = `Delivery|${fallback}`;
+        }
+      } else {
+        rateDisplay.style.display = 'none';
+        document.getElementById('attr-method').value = 'Delivery|0';
+      }
+    }
+    
+    // Delivery date/time handlers
+    const deliveryDateField = document.getElementById('zapiet-delivery-date');
+    const deliveryTimeField = document.getElementById('zapiet-delivery-time');
+    
+    if (deliveryDateField) {
+      deliveryDateField.addEventListener('change', function() {
+        document.getElementById('attr-date').value = this.value;
+      });
+    }
+    
+    if (deliveryTimeField) {
+      deliveryTimeField.addEventListener('change', function() {
+        document.getElementById('attr-time').value = this.value;
+      });
+    }
+    
+    // Allow Enter key to trigger postal code check
+    document.getElementById('zapiet-postal-code').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('zapiet-check-delivery').click();
+      }
     });
   }
 });
