@@ -58,7 +58,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   });
 
-  const s = settings as any; // Type cast to avoid TypeScript LSP cache issues
+  const s = settings as any;
   
   return json({
     settings: {

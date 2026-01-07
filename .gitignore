@@ -19,7 +19,8 @@ database.sqlite
 
 
 /extensions/*/dist
+/extensions/zapiet-widget/assets/widget.js
 
-# Ignore shopify files created during app dev
+
 .shopify/*
 .shopify.lock

@@ -11,7 +11,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const order = payload as any;
   
-  // Get app settings (type cast to avoid Prisma LSP cache issues)
   const settings = await db.settings.findUnique({
     where: { shop }
   }) as any;

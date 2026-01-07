@@ -45,11 +45,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         preselectLocation: "",
         locationSortOrder: "newest",
         fallbackRate: 0,
-      } as any, // Type cast to avoid Prisma cache issues
+      } as any,
     });
   }
 
-  return json({ settings: settings as any });
+  return json({ settings });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -87,7 +87,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function SettingsPage() {
   const { settings: settingsData } = useLoaderData<typeof loader>();
-  const settings = settingsData as any; // Type cast to avoid Prisma cache issues
+  const settings = settingsData as any;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
