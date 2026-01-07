@@ -383,15 +383,18 @@ class ZapietWidget {
   private handleDeliveryCheck(data: WidgetData): void {
     const postalInput = document.getElementById('zapiet-postal-code') as HTMLInputElement;
     const resultDiv = document.getElementById('zapiet-delivery-result');
-    const availableDiv = document.getElementById('zapiet-delivery-available');
+    const deliveryDateField = document.getElementById('zapiet-delivery-date') as HTMLInputElement;
+    const deliveryTimeField = document.getElementById('zapiet-delivery-time') as HTMLSelectElement;
+    const noteContainer = document.getElementById('zapiet-delivery-note-container');
+    const rateDisplay = document.getElementById('zapiet-delivery-rate');
 
-    if (!postalInput || !resultDiv || !availableDiv) return;
+    if (!postalInput || !resultDiv) return;
 
     const postalCode = postalInput.value.trim().toUpperCase();
 
     if (!postalCode) {
       resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>Please enter a postal code.</div>';
-      availableDiv.style.display = 'none';
+      this.hideDeliveryFields();
       return;
     }
 
@@ -399,17 +402,69 @@ class ZapietWidget {
 
     if (isValid) {
       resultDiv.innerHTML = '<div class="zapiet-success-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Great! You are eligible for delivery.</div>';
-      availableDiv.style.display = 'block';
       
       const postalAttr = document.getElementById('attr-postal-code') as HTMLInputElement;
       if (postalAttr) postalAttr.value = postalCode;
       
       this.setMethodAttribute('Delivery');
-      this.calculateDeliveryRate(data);
+      
+      if (deliveryDateField) {
+        deliveryDateField.parentElement!.parentElement!.style.display = 'grid';
+        deliveryDateField.parentElement!.style.display = 'flex';
+      }
+      
+      this.setupProgressiveDelivery(data);
     } else {
       resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>Sorry, we do not deliver to your postal code.</div>';
-      availableDiv.style.display = 'none';
+      this.hideDeliveryFields();
     }
+  }
+
+  private hideDeliveryFields(): void {
+    const deliveryDateField = document.getElementById('zapiet-delivery-date') as HTMLInputElement;
+    const deliveryTimeField = document.getElementById('zapiet-delivery-time') as HTMLSelectElement;
+    const noteContainer = document.getElementById('zapiet-delivery-note-container');
+    const rateDisplay = document.getElementById('zapiet-delivery-rate');
+
+    if (deliveryDateField) deliveryDateField.parentElement!.parentElement!.style.display = 'none';
+    if (deliveryTimeField) deliveryTimeField.parentElement!.style.display = 'none';
+    if (noteContainer) noteContainer.style.display = 'none';
+    if (rateDisplay) rateDisplay.style.display = 'none';
+  }
+
+  private setupProgressiveDelivery(data: WidgetData): void {
+    const deliveryDateField = document.getElementById('zapiet-delivery-date') as HTMLInputElement;
+    const deliveryTimeField = document.getElementById('zapiet-delivery-time') as HTMLSelectElement;
+    const noteContainer = document.getElementById('zapiet-delivery-note-container');
+    const rateDisplay = document.getElementById('zapiet-delivery-rate');
+
+    if (!deliveryDateField || !deliveryTimeField) return;
+
+    if (deliveryTimeField) deliveryTimeField.parentElement!.style.display = 'none';
+    if (noteContainer) noteContainer.style.display = 'none';
+    if (rateDisplay) rateDisplay.style.display = 'none';
+
+    deliveryDateField.addEventListener('change', () => {
+      if (deliveryDateField.value && deliveryTimeField) {
+        deliveryTimeField.parentElement!.style.display = 'flex';
+      }
+    });
+
+    deliveryTimeField.addEventListener('change', () => {
+      if (deliveryTimeField.value) {
+        if (data.settings.enableDeliveryNote && noteContainer) {
+          noteContainer.style.display = 'block';
+        }
+        
+        this.calculateDeliveryRate(data);
+        
+        if (rateDisplay) {
+          setTimeout(() => {
+            rateDisplay.style.display = 'block';
+          }, 300);
+        }
+      }
+    });
   }
 
   private validatePostalCode(postalCode: string, settings: WidgetSettings): boolean {
