@@ -140,33 +140,45 @@ class ZapietWidget {
 
   private initWidget(data: WidgetData): void {
     const { settings, locations } = data;
-    const tabsContainer = document.getElementById('zapiet-tabs');
     const methodInput = document.getElementById('attr-method') as HTMLInputElement;
     const errorDiv = document.getElementById('zapiet-error');
+    const deliveryBtn = document.getElementById('btn-delivery');
+    const pickupBtn = document.getElementById('btn-pickup');
 
-    if (!tabsContainer || !methodInput) return;
+    if (!methodInput) return;
 
     const pickupCheck = this.checkActivationConditions(settings.pickupActivationConditions);
     const deliveryCheck = this.checkActivationConditions(settings.deliveryActivationConditions);
 
-    // Create tabs
-    if (settings.enablePickup && pickupCheck.valid) {
-      this.createTab(tabsContainer, 'pickup', settings.pickupTitle, true);
-      this.showPanel('panel-pickup');
-      methodInput.value = 'Pickup';
+    // Handle method card visibility and default selection
+    let hasValidMethod = false;
+    
+    if (settings.enablePickup && pickupCheck.valid && pickupBtn) {
+      pickupBtn.style.display = 'flex';
+      if (!hasValidMethod) {
+        pickupBtn.classList.add('active');
+        this.showPanel('panel-pickup');
+        methodInput.value = 'Pickup';
+        hasValidMethod = true;
+      }
+    } else if (pickupBtn) {
+      pickupBtn.style.display = 'none';
     }
 
-    if (settings.enableDelivery && deliveryCheck.valid) {
-      const isActive = !settings.enablePickup || !pickupCheck.valid;
-      this.createTab(tabsContainer, 'delivery', settings.deliveryTitle, isActive);
-      if (isActive) {
+    if (settings.enableDelivery && deliveryCheck.valid && deliveryBtn) {
+      deliveryBtn.style.display = 'flex';
+      if (!hasValidMethod) {
+        deliveryBtn.classList.add('active');
         this.showPanel('panel-delivery');
         methodInput.value = 'Delivery';
+        hasValidMethod = true;
       }
+    } else if (deliveryBtn) {
+      deliveryBtn.style.display = 'none';
     }
 
     // Show error if neither option is available
-    if ((!settings.enablePickup || !pickupCheck.valid) && (!settings.enableDelivery || !deliveryCheck.valid)) {
+    if (!hasValidMethod) {
       if (errorDiv) {
         errorDiv.textContent = pickupCheck.message || deliveryCheck.message || 'No shipping options available for your cart.';
         errorDiv.style.display = 'block';
@@ -176,17 +188,8 @@ class ZapietWidget {
 
     this.setupPickup(data);
     this.setupDelivery(data);
-    this.setupTabSwitching();
+    this.setupCardSwitching();
     this.setupDateMinimums();
-  }
-
-  private createTab(container: HTMLElement, type: string, title: string, active: boolean): void {
-    const tab = document.createElement('button');
-    tab.type = 'button';
-    tab.className = `zapiet-tab${active ? ' active' : ''}`;
-    tab.dataset.tab = type;
-    tab.textContent = title;
-    container.appendChild(tab);
   }
 
   private showPanel(panelId: string): void {
@@ -251,6 +254,7 @@ class ZapietWidget {
       if (noteField && noteAttr) {
         noteField.addEventListener('input', () => {
           noteAttr.value = noteField.value;
+          this.updateCartAttributes();
         });
       }
     }
@@ -268,6 +272,7 @@ class ZapietWidget {
 
     this.populateTimeSlots('zapiet-pickup-time', location.businessHours);
     this.calculatePickupRate(location.id, rates);
+    this.updateCartAttributes();
   }
 
   private formatBusinessHours(hours: string, locationName: string): string {
@@ -375,6 +380,7 @@ class ZapietWidget {
       if (noteField && noteAttr) {
         noteField.addEventListener('input', () => {
           noteAttr.value = noteField.value;
+          this.updateCartAttributes();
         });
       }
     }
@@ -534,20 +540,37 @@ class ZapietWidget {
     }
   }
 
-  private setupTabSwitching(): void {
-    this.root.querySelectorAll('.zapiet-tab').forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        this.root.querySelectorAll('.zapiet-tab').forEach(t => t.classList.remove('active'));
-        target.classList.add('active');
+  private setupCardSwitching(): void {
+    const deliveryBtn = document.getElementById('btn-delivery');
+    const pickupBtn = document.getElementById('btn-pickup');
 
-        const tabType = target.dataset.tab;
-        document.getElementById('panel-pickup')!.style.display = tabType === 'pickup' ? 'block' : 'none';
-        document.getElementById('panel-delivery')!.style.display = tabType === 'delivery' ? 'block' : 'none';
-
-        this.setMethodAttribute(tabType === 'pickup' ? 'Pickup' : 'Delivery');
+    if (deliveryBtn) {
+      deliveryBtn.addEventListener('click', () => {
+        deliveryBtn.classList.add('active');
+        if (pickupBtn) pickupBtn.classList.remove('active');
+        
+        const pickupPanel = document.getElementById('panel-pickup');
+        const deliveryPanel = document.getElementById('panel-delivery');
+        if (pickupPanel) pickupPanel.style.display = 'none';
+        if (deliveryPanel) deliveryPanel.style.display = 'block';
+        
+        this.setMethodAttribute('Delivery');
       });
-    });
+    }
+
+    if (pickupBtn) {
+      pickupBtn.addEventListener('click', () => {
+        pickupBtn.classList.add('active');
+        if (deliveryBtn) deliveryBtn.classList.remove('active');
+        
+        const pickupPanel = document.getElementById('panel-pickup');
+        const deliveryPanel = document.getElementById('panel-delivery');
+        if (pickupPanel) pickupPanel.style.display = 'block';
+        if (deliveryPanel) deliveryPanel.style.display = 'none';
+        
+        this.setMethodAttribute('Pickup');
+      });
+    }
   }
 
   private setupDateMinimums(): void {
@@ -563,6 +586,7 @@ class ZapietWidget {
       pickupDate.addEventListener('change', () => {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = pickupDate.value;
+        this.updateCartAttributes();
       });
     }
 
@@ -571,6 +595,7 @@ class ZapietWidget {
       deliveryDate.addEventListener('change', () => {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = deliveryDate.value;
+        this.updateCartAttributes();
       });
     }
 
@@ -581,6 +606,7 @@ class ZapietWidget {
       pickupTime.addEventListener('change', () => {
         const timeAttr = document.getElementById('attr-time') as HTMLInputElement;
         if (timeAttr) timeAttr.value = pickupTime.value;
+        this.updateCartAttributes();
       });
     }
 
@@ -588,6 +614,7 @@ class ZapietWidget {
       deliveryTime.addEventListener('change', () => {
         const timeAttr = document.getElementById('attr-time') as HTMLInputElement;
         if (timeAttr) timeAttr.value = deliveryTime.value;
+        this.updateCartAttributes();
       });
     }
   }
@@ -595,6 +622,55 @@ class ZapietWidget {
   private setMethodAttribute(value: string): void {
     const methodInput = document.getElementById('attr-method') as HTMLInputElement;
     if (methodInput) methodInput.value = value;
+    
+    // Update cart attributes via Shopify AJAX API
+    this.updateCartAttributes();
+  }
+
+  private async updateCartAttributes(): Promise<void> {
+    const attributes: Record<string, string> = {};
+    
+    // Collect all attributes from hidden inputs
+    const methodInput = document.getElementById('attr-method') as HTMLInputElement;
+    const locationInput = document.getElementById('attr-location') as HTMLInputElement;
+    const dateInput = document.getElementById('attr-date') as HTMLInputElement;
+    const timeInput = document.getElementById('attr-time') as HTMLInputElement;
+    const pickupNoteInput = document.getElementById('attr-pickup-note') as HTMLInputElement;
+    const postalCodeInput = document.getElementById('attr-postal-code') as HTMLInputElement;
+    const deliveryNoteInput = document.getElementById('attr-delivery-note') as HTMLInputElement;
+    
+    if (methodInput?.value) attributes['_zapiet_method'] = methodInput.value;
+    if (locationInput?.value) attributes['_zapiet_location'] = locationInput.value;
+    if (dateInput?.value) attributes['_zapiet_date'] = dateInput.value;
+    if (timeInput?.value) attributes['_zapiet_time'] = timeInput.value;
+    if (pickupNoteInput?.value) attributes['_zapiet_pickup_note'] = pickupNoteInput.value;
+    if (postalCodeInput?.value) attributes['_zapiet_postal_code'] = postalCodeInput.value;
+    if (deliveryNoteInput?.value) attributes['_zapiet_delivery_note'] = deliveryNoteInput.value;
+
+    // Only update if we have attributes
+    if (Object.keys(attributes).length === 0) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/cart/update.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ attributes }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to update cart attributes:', response.statusText);
+      } else {
+        console.log('Cart attributes updated:', attributes);
+        // Trigger cart updated event for other scripts
+        document.dispatchEvent(new CustomEvent('zapiet:cart-updated', { detail: attributes }));
+      }
+    } catch (error) {
+      console.error('Error updating cart attributes:', error);
+    }
   }
 }
 
@@ -604,3 +680,5 @@ document.addEventListener('DOMContentLoaded', () => {
   widget.init();
 });
 
+// Export for global access (needed for app embed injection)
+(window as any).ZapietWidget = ZapietWidget;

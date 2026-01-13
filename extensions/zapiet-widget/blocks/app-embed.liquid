@@ -1,0 +1,300 @@
+<div id="zapiet-app-embed-root" style="display: none;"
+     data-shop="{{ shop.permanent_domain }}"
+     data-enable-cart-page="true"
+     data-enable-cart-drawer="true">
+</div>
+
+<script>
+(function() {
+  'use strict';
+  
+  if (window.zapietEmbedLoaded) return;
+  window.zapietEmbedLoaded = true;
+
+  const config = {
+    shop: "{{ shop.permanent_domain }}",
+    cartTotal: {{ cart.total_price | divided_by: 100.0 }},
+    cartWeight: {{ cart.total_weight | divided_by: 1000.0 }}
+  };
+
+  // Cart page selectors
+  const cartPageSelectors = [
+    '.cart-page__summary',
+    '.cart__footer',
+    '[data-cart-summary]',
+    '.cart-summary',
+    'form[action="/cart"] .cart-footer',
+    '#main-cart-footer',
+    '.cart-template__footer',
+    '.cart__blocks',
+    '.cart-footer'
+  ];
+
+  // Cart drawer selectors  
+  const cartDrawerSelectors = [
+    'cart-drawer .cart-drawer__footer',
+    '.drawer__footer',
+    '#CartDrawer-Footer',
+    '.cart-drawer__content',
+    '[data-cart-drawer-footer]',
+    'cart-drawer-items + *',
+    '.cart-drawer__bottom',
+    '#cart-drawer .drawer__inner-bottom'
+  ];
+
+  function createWidgetContainer() {
+    const container = document.createElement('div');
+    container.id = 'zapiet-widget-root';
+    container.className = 'zapiet-container';
+    container.setAttribute('data-shop', config.shop);
+    container.setAttribute('data-cart-total', config.cartTotal);
+    container.setAttribute('data-cart-weight', config.cartWeight);
+    
+    container.innerHTML = `
+      <div class="zapiet-loading">Loading options...</div>
+      
+      <div class="zapiet-content" style="display:none;">
+        <div class="zapiet-method-selector" id="zapiet-method-selector">
+          <button type="button" class="zapiet-method-card" data-method="delivery" id="btn-delivery">
+            <svg class="zapiet-method-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+            </svg>
+            <span class="zapiet-method-label">Local Delivery</span>
+          </button>
+          <button type="button" class="zapiet-method-card" data-method="pickup" id="btn-pickup">
+            <svg class="zapiet-method-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span class="zapiet-method-label">Store Pickup</span>
+          </button>
+        </div>
+        <div class="zapiet-error" id="zapiet-error" style="display:none;"></div>
+        
+        <div class="zapiet-panel" id="panel-pickup" style="display:none;">
+          <p class="zapiet-instruction">Please select a pickup location:</p>
+          <div id="zapiet-location-list" class="zapiet-location-list"></div>
+          
+          <div id="zapiet-pickup-datetime" style="display:none; margin-top: 20px;">
+            <div class="zapiet-datetime">
+              <div class="zapiet-field">
+                <label class="zapiet-label">Pickup Date:</label>
+                <input type="date" id="zapiet-pickup-date" class="zapiet-input" required />
+              </div>
+              <div class="zapiet-field">
+                <label class="zapiet-label">Pickup Time:</label>
+                <select id="zapiet-pickup-time" class="zapiet-select" required>
+                  <option value="">Select time...</option>
+                </select>
+              </div>
+            </div>
+            
+            <div id="zapiet-pickup-note-container" style="display:none; margin-top: 15px;">
+              <label class="zapiet-label">Pickup Note (optional):</label>
+              <textarea id="zapiet-pickup-note" class="zapiet-input" rows="3" placeholder="Any special instructions..."></textarea>
+            </div>
+          </div>
+          
+          <div id="zapiet-pickup-rate" class="zapiet-rate-display" style="display:none;"></div>
+        </div>
+
+        <div class="zapiet-panel" id="panel-delivery" style="display:none;">
+          <label class="zapiet-label">
+            Enter your postal code to check if you are eligible for local delivery:
+          </label>
+          
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <input type="text" id="zapiet-postal-code" class="zapiet-input" placeholder="e.g., V5R 1A1" style="margin-bottom: 0; flex: 1;" maxlength="7" />
+            <button type="button" id="zapiet-check-delivery" class="zapiet-button" style="flex-shrink: 0;">
+              Check
+            </button>
+          </div>
+          
+          <div id="zapiet-delivery-result" class="zapiet-delivery-result"></div>
+          
+          <div id="zapiet-delivery-available" style="display:none;">
+            <div class="zapiet-datetime" style="margin-top: 20px;">
+              <div class="zapiet-field">
+                <label class="zapiet-label">Delivery Date:</label>
+                <input type="date" id="zapiet-delivery-date" class="zapiet-input" required />
+              </div>
+              <div class="zapiet-field">
+                <label class="zapiet-label">Delivery Time:</label>
+                <select id="zapiet-delivery-time" class="zapiet-select" required>
+                  <option value="">Select time...</option>
+                  <option value="9:00 AM - 12:00 PM">9:00 AM - 12:00 PM</option>
+                  <option value="12:00 PM - 3:00 PM">12:00 PM - 3:00 PM</option>
+                  <option value="3:00 PM - 6:00 PM">3:00 PM - 6:00 PM</option>
+                  <option value="5:00 PM - 11:00 PM">5:00 PM - 11:00 PM</option>
+                </select>
+              </div>
+            </div>
+            
+            <div id="zapiet-delivery-note-container" style="display:none; margin-top: 15px;">
+              <label class="zapiet-label">Delivery Note (optional):</label>
+              <textarea id="zapiet-delivery-note" class="zapiet-input" rows="3" placeholder="Special delivery instructions..."></textarea>
+            </div>
+            
+            <div id="zapiet-delivery-rate" class="zapiet-rate-display" style="display:none; margin-top: 15px;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <input type="hidden" name="attributes[Method]" id="attr-method" value="" />
+      <input type="hidden" name="attributes[Pickup Location]" id="attr-location" value="" />
+      <input type="hidden" name="attributes[Pickup Date]" id="attr-date" value="" />
+      <input type="hidden" name="attributes[Pickup Time]" id="attr-time" value="" />
+      <input type="hidden" name="attributes[Pickup Note]" id="attr-pickup-note" value="" />
+      <input type="hidden" name="attributes[Delivery Address]" id="attr-delivery-address" value="" />
+      <input type="hidden" name="attributes[Postal Code]" id="attr-postal-code" value="" />
+      <input type="hidden" name="attributes[Delivery Note]" id="attr-delivery-note" value="" />
+    `;
+    
+    return container;
+  }
+
+  function findInjectionPoint(selectors) {
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) return element;
+    }
+    return null;
+  }
+
+  function injectWidget() {
+    if (document.getElementById('zapiet-widget-root')) return;
+
+    const isCartPage = window.location.pathname.includes('/cart');
+    const hasCartDrawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+    
+    if (!isCartPage && !hasCartDrawer) return;
+
+    let injectionPoint = null;
+
+    injectionPoint = findInjectionPoint(cartDrawerSelectors);
+    
+    if (!injectionPoint && isCartPage) {
+      injectionPoint = findInjectionPoint(cartPageSelectors);
+    }
+
+    if (injectionPoint) {
+      const widget = createWidgetContainer();
+      
+      if (injectionPoint.firstChild) {
+        injectionPoint.insertBefore(widget, injectionPoint.firstChild);
+      } else {
+        injectionPoint.appendChild(widget);
+      }
+      
+      setTimeout(() => {
+        if (window.ZapietWidget) {
+          const widgetInstance = new window.ZapietWidget('zapiet-widget-root');
+          widgetInstance.init();
+        }
+      }, 100);
+    }
+  }
+
+  document.addEventListener('cart:updated', function() {
+    const existingWidget = document.getElementById('zapiet-widget-root');
+    if (existingWidget) existingWidget.remove();
+    setTimeout(injectWidget, 300);
+  });
+
+  document.addEventListener('cart:open', function() {
+    setTimeout(injectWidget, 300);
+  });
+
+  // Inject on page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectWidget);
+  } else {
+    injectWidget();
+  }
+
+  // Retry injection
+  setTimeout(injectWidget, 1000);
+
+})();
+</script>
+
+<style>
+  .zapiet-method-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  
+  .zapiet-method-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 120px;
+  }
+  
+  .zapiet-method-card:hover {
+    border-color: var(--zapiet-primary-color, #008060);
+    background: #f9fafb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  
+  .zapiet-method-card.active {
+    border-color: var(--zapiet-primary-color, #008060);
+    background: #ecfdf5;
+    border-width: 2px;
+  }
+  
+  .zapiet-method-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    color: #6b7280;
+    transition: color 0.2s;
+  }
+  
+  .zapiet-method-card.active .zapiet-method-icon,
+  .zapiet-method-card:hover .zapiet-method-icon {
+    color: var(--zapiet-primary-color, #008060);
+  }
+  
+  .zapiet-method-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    text-align: center;
+  }
+  
+  .zapiet-container {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    background: transparent;
+  }
+  
+  .zapiet-container h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #111827;
+  }
+</style>
+
+<link rel="stylesheet" href="{{ 'widget.css' | asset_url }}">
+<script src="{{ 'widget.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Zapiet App Embed",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}
