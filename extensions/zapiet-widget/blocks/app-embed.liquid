@@ -30,16 +30,26 @@
     '.cart-footer'
   ];
 
-  // Cart drawer selectors  
+  // Cart drawer selectors (expanded for all themes)
   const cartDrawerSelectors = [
     'cart-drawer .cart-drawer__footer',
+    'cart-drawer footer',
+    'cart-drawer [role="dialog"] footer',
     '.drawer__footer',
     '#CartDrawer-Footer',
+    '#cart-drawer-footer',
     '.cart-drawer__content',
+    '.cart-drawer__inner',
     '[data-cart-drawer-footer]',
-    'cart-drawer-items + *',
+    'cart-drawer-items',
     '.cart-drawer__bottom',
-    '#cart-drawer .drawer__inner-bottom'
+    '#cart-drawer .drawer__inner-bottom',
+    '.drawer-cart__footer',
+    '#sidebar-cart .cart-footer',
+    'aside[id*="cart"] .drawer__footer',
+    'dialog[id*="cart"] footer',
+    '.cart-notification-product',
+    '.mini-cart__content'
   ];
 
   function createWidgetContainer() {
@@ -160,17 +170,20 @@
     return null;
   }
 
-  function injectWidget() {
+  function injectWidget(forceDrawer = false) {
     if (document.getElementById('zapiet-widget-root')) return;
 
     const isCartPage = window.location.pathname.includes('/cart');
-    const hasCartDrawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+    const cartDrawer = document.querySelector('cart-drawer') || 
+                      document.querySelector('.cart-drawer') ||
+                      document.querySelector('[id*="cart-drawer"]') ||
+                      document.querySelector('aside[id*="cart"]');
     
-    if (!isCartPage && !hasCartDrawer) return;
-
     let injectionPoint = null;
 
-    injectionPoint = findInjectionPoint(cartDrawerSelectors);
+    if (forceDrawer || cartDrawer) {
+      injectionPoint = findInjectionPoint(cartDrawerSelectors);
+    }
     
     if (!injectionPoint && isCartPage) {
       injectionPoint = findInjectionPoint(cartPageSelectors);
@@ -190,29 +203,82 @@
           const widgetInstance = new window.ZapietWidget('zapiet-widget-root');
           widgetInstance.init();
         }
-      }, 100);
+      }, 150);
     }
+  }
+
+  // Watch for cart drawer opening
+  function watchCartDrawer() {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && 
+            (mutation.attributeName === 'open' || 
+             mutation.attributeName === 'class' ||
+             mutation.attributeName === 'aria-hidden')) {
+          const target = mutation.target;
+          if (target.hasAttribute('open') || 
+              target.classList.contains('active') ||
+              target.getAttribute('aria-hidden') === 'false') {
+            setTimeout(() => injectWidget(true), 200);
+          }
+        }
+        
+        if (mutation.addedNodes.length > 0) {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === 1 && 
+                (node.matches('cart-drawer') || 
+                 node.matches('.cart-drawer') ||
+                 node.matches('[id*="cart"]'))) {
+              setTimeout(() => injectWidget(true), 200);
+            }
+          });
+        }
+      }
+    });
+
+    const cartElements = document.querySelectorAll('cart-drawer, .cart-drawer, [id*="cart-drawer"], aside[id*="cart"]');
+    cartElements.forEach(el => {
+      observer.observe(el, {
+        attributes: true,
+        childList: true,
+        subtree: true
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
   }
 
   document.addEventListener('cart:updated', function() {
     const existingWidget = document.getElementById('zapiet-widget-root');
     if (existingWidget) existingWidget.remove();
-    setTimeout(injectWidget, 300);
+    setTimeout(() => injectWidget(true), 300);
   });
 
   document.addEventListener('cart:open', function() {
-    setTimeout(injectWidget, 300);
+    setTimeout(() => injectWidget(true), 300);
+  });
+
+  document.addEventListener('cart:refresh', function() {
+    setTimeout(() => injectWidget(true), 300);
   });
 
   // Inject on page load
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectWidget);
+    document.addEventListener('DOMContentLoaded', () => {
+      injectWidget();
+      watchCartDrawer();
+    });
   } else {
     injectWidget();
+    watchCartDrawer();
   }
 
-  // Retry injection
-  setTimeout(injectWidget, 1000);
+  // Retry injection for cart drawer
+  setTimeout(() => injectWidget(true), 1000);
+  setTimeout(() => injectWidget(true), 2000);
 
 })();
 </script>
