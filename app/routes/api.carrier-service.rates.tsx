@@ -229,11 +229,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     if (rates.length === 0) {
-      console.log("No rates available for shop:", shopDomain);
       return json({ rates: [] });
     }
 
-    console.log(`Returning ${rates.length} rates for shop: ${shopDomain}`);
     return json({ rates });
 
   } catch (error) {

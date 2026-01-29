@@ -150,7 +150,6 @@ class ZapietWidget {
     const pickupCheck = this.checkActivationConditions(settings.pickupActivationConditions);
     const deliveryCheck = this.checkActivationConditions(settings.deliveryActivationConditions);
 
-    // Handle method card visibility and default selection
     let hasValidMethod = false;
     
     if (settings.enablePickup && pickupCheck.valid && pickupBtn) {
@@ -177,7 +176,6 @@ class ZapietWidget {
       deliveryBtn.style.display = 'none';
     }
 
-    // Show error if neither option is available
     if (!hasValidMethod) {
       if (errorDiv) {
         errorDiv.textContent = pickupCheck.message || deliveryCheck.message || 'No shipping options available for your cart.';
@@ -201,6 +199,8 @@ class ZapietWidget {
     const { settings, locations, rates } = data;
     const locationList = document.getElementById('zapiet-location-list');
     if (!locationList) return;
+
+    locationList.innerHTML = '';
 
     const pickupLocations = locations.filter(l => l.isPickup);
 
@@ -623,14 +623,12 @@ class ZapietWidget {
     const methodInput = document.getElementById('attr-method') as HTMLInputElement;
     if (methodInput) methodInput.value = value;
     
-    // Update cart attributes via Shopify AJAX API
     this.updateCartAttributes();
   }
 
   private async updateCartAttributes(): Promise<void> {
     const attributes: Record<string, string> = {};
     
-    // Collect all attributes from hidden inputs
     const methodInput = document.getElementById('attr-method') as HTMLInputElement;
     const locationInput = document.getElementById('attr-location') as HTMLInputElement;
     const dateInput = document.getElementById('attr-date') as HTMLInputElement;
@@ -647,7 +645,6 @@ class ZapietWidget {
     if (postalCodeInput?.value) attributes['_zapiet_postal_code'] = postalCodeInput.value;
     if (deliveryNoteInput?.value) attributes['_zapiet_delivery_note'] = deliveryNoteInput.value;
 
-    // Only update if we have attributes
     if (Object.keys(attributes).length === 0) {
       return;
     }
@@ -661,11 +658,7 @@ class ZapietWidget {
         body: JSON.stringify({ attributes }),
       });
 
-      if (!response.ok) {
-        console.error('Failed to update cart attributes:', response.statusText);
-      } else {
-        console.log('Cart attributes updated:', attributes);
-        // Trigger cart updated event for other scripts
+      if (response.ok) {
         document.dispatchEvent(new CustomEvent('zapiet:cart-updated', { detail: attributes }));
       }
     } catch (error) {
@@ -674,11 +667,9 @@ class ZapietWidget {
   }
 }
 
-// Initialize widget when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const widget = new ZapietWidget('zapiet-widget-root');
   widget.init();
 });
 
-// Export for global access (needed for app embed injection)
 (window as any).ZapietWidget = ZapietWidget;
