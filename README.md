@@ -4,13 +4,25 @@ A Shopify app that enables merchants to offer store pickup and local delivery op
 
 ## Features
 
-- **Store Pickup**: Allow customers to select pickup locations with scheduled date/time
-- **Local Delivery**: Offer local delivery with postal code validation
-- **Custom Rates**: Configure price-based and weight-based shipping rates per location
-- **Order Management**: View and manage pickup/delivery orders with custom attributes
+### Core Functionality
+- **Store Pickup**: Customers select pickup locations with scheduled date/time slots
+- **Local Delivery**: Postal code validation with progressive field display (postal code → date → time)
+- **Order Notes**: Customers can add general order notes and method-specific notes
+- **Custom Rates**: Price-based and weight-based shipping rates per location
+
+### Advanced Features
+- **Location Activation Conditions**: Per-location rules based on cart value, weight, and delivery zones
+- **Delivery Time Slots**: Configurable time windows for delivery scheduling
+- **Postal Code Validation**: Support for none/partial/full validation modes
 - **Auto-Tagging**: Automatically tag orders for workflow automation
-- **Security Codes**: Generate unique codes for pickup order verification
-- **Flexible Settings**: Customise activation conditions, validation rules, and appearance
+- **Business Hours Display**: Show location-specific opening hours
+- **Fallback Rates**: Default shipping costs when no rules match
+
+### Admin Interface
+- **Location Management**: Add, edit, and configure pickup/delivery locations
+- **Rate Configuration**: Flexible rate rules with min/max conditions
+- **Settings Panel**: Customise colors, titles, notes, and validation rules
+- **Order Management**: View orders filtered by pickup/delivery method
 
 ## Tech Stack
 
@@ -40,23 +52,46 @@ A Shopify app that enables merchants to offer store pickup and local delivery op
 ## Development
 
 ```bash
-npm run dev          # Start Shopify app dev server
-npm run build        # Build for production
-npm run deploy       # Deploy to Shopify
+npm run dev              # Start Shopify app dev server
+npm run widget:build     # Build storefront widget
+npm run build            # Build for production
+npm run deploy           # Deploy to Shopify
+npx prisma generate      # Regenerate Prisma client
+npx prisma db push       # Sync database schema
 ```
 
 ## Project Structure
 
 ```
 app/
-├── routes/          # Remix routes (pages & API endpoints)
-├── db.server.ts     # Database client
-└── shopify.server.ts # Shopify app configuration
+├── routes/
+│   ├── app.*.tsx              # Admin dashboard pages
+│   ├── api.widget-data.tsx    # Widget API endpoint
+│   └── webhooks.*.tsx         # Shopify webhooks
+├── db.server.ts               # Prisma database client
+└── shopify.server.ts          # Shopify app configuration
 
-extensions/
-└── zapiet-widget/   # Theme app extension (storefront widget)
+extensions/zapiet-widget/
+├── blocks/
+│   ├── app-embed.liquid       # Widget container & injection logic
+│   └── pickup-delivery.liquid # Product page block
+├── assets/
+│   ├── widget.js              # Compiled widget bundle
+│   └── widget.css             # Widget styles
+└── shopify.extension.toml     # Extension configuration
+
+widget-src/
+├── widget.ts                  # Widget TypeScript source
+└── build.ts                   # ESBuild compilation script
 
 prisma/
-├── schema.prisma    # Database schema
-└── migrations/      # Database migrations
+├── schema.prisma              # Database models (Location, Rate, Settings)
+└── migrations/                # Migration history
 ```
+
+## Database Schema
+
+- **Location**: Pickup/delivery locations with activation conditions
+- **Rate**: Shipping rates (price/weight-based) per location
+- **Settings**: Global app configuration and preferences
+- **Session**: Shopify app session management

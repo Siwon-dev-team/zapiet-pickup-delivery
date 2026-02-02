@@ -12,6 +12,7 @@ interface WidgetSettings {
   enableDeliveryNote: boolean;
   preselectLocation: 'first' | '';
   fallbackRate: number;
+  deliveryTimeSlots?: string;
 }
 
 interface Location {
@@ -22,6 +23,8 @@ interface Location {
   isPickup: boolean;
   isDelivery: boolean;
   businessHours: string;
+  pickupActivationConditions: string;
+  deliveryActivationConditions: string;
 }
 
 interface Rate {
@@ -59,6 +62,9 @@ class ZapietWidget {
   private cartTotal: number;
   private cartWeight: number;
   private data: WidgetData | null = null;
+  private eligiblePickupLocations: Location[] = [];
+  private eligibleDeliveryLocations: Location[] = [];
+  private deliveryLocationsForPostal: Location[] | null = null;
 
   constructor(rootId: string) {
     const rootElement = document.getElementById(rootId);
@@ -77,17 +83,38 @@ class ZapietWidget {
 
     try {
       const response = await fetch(`/apps/zapiet?shop=${this.shop}`);
+      
+      if (!response.ok) {
+        throw new Error(`API responded with status ${response.status}`);
+      }
+      
       const data: WidgetData = await response.json();
       
-      if (loading) loading.style.display = 'none';
-      if (content) content.style.display = 'block';
+      if (loading) {
+        loading.style.display = 'none';
+        loading.style.visibility = 'hidden';
+        loading.remove();
+      }
+      
+      if (content) {
+        content.style.display = 'block';
+        content.style.visibility = 'visible';
+        content.style.opacity = '1';
+        
+        const methodSelector = content.querySelector('.zapiet-method-selector') as HTMLElement;
+        if (methodSelector) {
+          methodSelector.style.display = 'grid';
+        }
+      }
 
       this.data = data;
       this.applyPrimaryColor(data.settings.primaryColor);
       this.initWidget(data);
     } catch (err) {
-      console.error('Zapiet Widget Error:', err);
-      if (loading) loading.textContent = 'Unable to load options.';
+      if (loading) {
+        loading.textContent = 'Unable to load options. Please refresh the page.';
+        loading.style.color = '#dc2626';
+      }
     }
   }
 
@@ -97,49 +124,80 @@ class ZapietWidget {
     }
   }
 
-  private checkActivationConditions(conditions: string): ActivationResult {
-    if (!conditions || conditions === '{}') return { valid: true };
+  private parseActivationConditions(conditions: string | null | undefined): ActivationConditions {
+    if (!conditions) return {};
+    const trimmed = conditions.trim();
+    if (!trimmed || trimmed === '{}') return {};
+
+    let jsonString = trimmed;
+    const firstBrace = trimmed.indexOf('{');
+    const lastBrace = trimmed.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonString = trimmed.slice(firstBrace, lastBrace + 1);
+    }
 
     try {
-      const rules: ActivationConditions = JSON.parse(conditions);
-
-      if (rules.minOrderValue && this.cartTotal < rules.minOrderValue) {
-        return {
-          valid: false,
-          message: `Minimum order value is $${rules.minOrderValue}. Current: $${this.cartTotal.toFixed(2)}`
-        };
-      }
-
-      if (rules.maxOrderValue && this.cartTotal > rules.maxOrderValue) {
-        return {
-          valid: false,
-          message: `Maximum order value is $${rules.maxOrderValue}`
-        };
-      }
-
-      if (rules.minWeight && this.cartWeight < rules.minWeight) {
-        return {
-          valid: false,
-          message: `Minimum weight is ${rules.minWeight}kg. Current: ${this.cartWeight.toFixed(2)}kg`
-        };
-      }
-
-      if (rules.maxWeight && this.cartWeight > rules.maxWeight) {
-        return {
-          valid: false,
-          message: `Maximum weight is ${rules.maxWeight}kg. Current: ${this.cartWeight.toFixed(2)}kg`
-        };
-      }
-
-      return { valid: true };
+      return JSON.parse(jsonString) as ActivationConditions;
     } catch (e) {
       console.error('Error parsing activation conditions:', e);
-      return { valid: true };
+      return {};
     }
+  }
+
+  private checkActivationConditions(conditions: string | null | undefined): ActivationResult {
+    const rules = this.parseActivationConditions(conditions);
+
+    if (rules.minOrderValue && this.cartTotal < rules.minOrderValue) {
+      return {
+        valid: false,
+        message: `Minimum order value is $${rules.minOrderValue}. Current: $${this.cartTotal.toFixed(2)}`
+      };
+    }
+
+    if (rules.maxOrderValue && this.cartTotal > rules.maxOrderValue) {
+      return {
+        valid: false,
+        message: `Maximum order value is $${rules.maxOrderValue}`
+      };
+    }
+
+    if (rules.minWeight && this.cartWeight < rules.minWeight) {
+      return {
+        valid: false,
+        message: `Minimum weight is ${rules.minWeight}kg. Current: ${this.cartWeight.toFixed(2)}kg`
+      };
+    }
+
+    if (rules.maxWeight && this.cartWeight > rules.maxWeight) {
+      return {
+        valid: false,
+        message: `Maximum weight is ${rules.maxWeight}kg. Current: ${this.cartWeight.toFixed(2)}kg`
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private getDeliveryTimeSlots(settings: WidgetSettings): string[] {
+    const raw = settings.deliveryTimeSlots || '';
+    return raw
+      .split(',')
+      .map(slot => slot.trim())
+      .filter(Boolean);
   }
 
   private initWidget(data: WidgetData): void {
     const { settings, locations } = data;
+    
+    const orderNoteField = document.getElementById('zapiet-order-note') as HTMLTextAreaElement;
+    const orderNoteAttr = document.getElementById('attr-order-note') as HTMLInputElement;
+    if (orderNoteField && orderNoteAttr) {
+      orderNoteField.addEventListener('input', () => {
+        orderNoteAttr.value = orderNoteField.value;
+        this.updateCartAttributes();
+      });
+    }
+    
     const methodInput = document.getElementById('attr-method') as HTMLInputElement;
     const errorDiv = document.getElementById('zapiet-error');
     const deliveryBtn = document.getElementById('btn-delivery');
@@ -147,12 +205,25 @@ class ZapietWidget {
 
     if (!methodInput) return;
 
-    const pickupCheck = this.checkActivationConditions(settings.pickupActivationConditions);
-    const deliveryCheck = this.checkActivationConditions(settings.deliveryActivationConditions);
+    const pickupLocations = locations.filter(l => l.isPickup);
+    const deliveryLocations = locations.filter(l => l.isDelivery);
+
+    const pickupChecks = pickupLocations.map(loc =>
+      this.checkActivationConditions(loc.pickupActivationConditions)
+    );
+    const deliveryChecks = deliveryLocations.map(loc =>
+      this.checkActivationConditions(loc.deliveryActivationConditions)
+    );
+
+    this.eligiblePickupLocations = pickupLocations.filter((_, index) => pickupChecks[index].valid);
+    this.eligibleDeliveryLocations = deliveryLocations.filter((_, index) => deliveryChecks[index].valid);
+
+    const pickupCheckMessage = pickupChecks.find(check => !check.valid)?.message;
+    const deliveryCheckMessage = deliveryChecks.find(check => !check.valid)?.message;
 
     let hasValidMethod = false;
     
-    if (settings.enablePickup && pickupCheck.valid && pickupBtn) {
+    if (settings.enablePickup && this.eligiblePickupLocations.length > 0 && pickupBtn) {
       pickupBtn.style.display = 'flex';
       if (!hasValidMethod) {
         pickupBtn.classList.add('active');
@@ -164,7 +235,7 @@ class ZapietWidget {
       pickupBtn.style.display = 'none';
     }
 
-    if (settings.enableDelivery && deliveryCheck.valid && deliveryBtn) {
+    if (settings.enableDelivery && this.eligibleDeliveryLocations.length > 0 && deliveryBtn) {
       deliveryBtn.style.display = 'flex';
       if (!hasValidMethod) {
         deliveryBtn.classList.add('active');
@@ -178,7 +249,10 @@ class ZapietWidget {
 
     if (!hasValidMethod) {
       if (errorDiv) {
-        errorDiv.textContent = pickupCheck.message || deliveryCheck.message || 'No shipping options available for your cart.';
+        errorDiv.textContent =
+          pickupCheckMessage ||
+          deliveryCheckMessage ||
+          'No shipping options available for your cart.';
         errorDiv.style.display = 'block';
       }
       return;
@@ -196,13 +270,14 @@ class ZapietWidget {
   }
 
   private setupPickup(data: WidgetData): void {
-    const { settings, locations, rates } = data;
+    const { settings, rates } = data;
     const locationList = document.getElementById('zapiet-location-list');
     if (!locationList) return;
 
     locationList.innerHTML = '';
 
-    const pickupLocations = locations.filter(l => l.isPickup);
+    const pickupLocations = this.eligiblePickupLocations;
+    if (pickupLocations.length === 0) return;
 
     pickupLocations.forEach((loc, index) => {
       const locationItem = document.createElement('label');
@@ -270,7 +345,7 @@ class ZapietWidget {
     const datetimeDiv = document.getElementById('zapiet-pickup-datetime');
     if (datetimeDiv) datetimeDiv.style.display = 'block';
 
-    this.populateTimeSlots('zapiet-pickup-time', location.businessHours);
+    this.populateTimeSlots('zapiet-pickup-time');
     this.calculatePickupRate(location.id, rates);
     this.updateCartAttributes();
   }
@@ -298,13 +373,13 @@ class ZapietWidget {
     }
   }
 
-  private populateTimeSlots(selectId: string, businessHours: string): void {
+  private populateTimeSlots(selectId: string, timeSlots?: string[]): void {
     const select = document.getElementById(selectId) as HTMLSelectElement;
     if (!select) return;
 
     select.innerHTML = '<option value="">Select time...</option>';
 
-    const timeSlots = [
+    const slots = timeSlots && timeSlots.length > 0 ? timeSlots : [
       '9:00 AM - 12:00 PM',
       '12:00 PM - 3:00 PM',
       '2:00 PM - 6:00 PM',
@@ -313,7 +388,7 @@ class ZapietWidget {
       '5:00 PM - 11:00 PM'
     ];
 
-    timeSlots.forEach(slot => {
+    slots.forEach(slot => {
       const option = document.createElement('option');
       option.value = slot;
       option.textContent = slot;
@@ -355,8 +430,11 @@ class ZapietWidget {
 
   private setupDelivery(data: WidgetData): void {
     const { settings } = data;
+    this.deliveryLocationsForPostal = null;
     const checkButton = document.getElementById('zapiet-check-delivery');
     const postalInput = document.getElementById('zapiet-postal-code') as HTMLInputElement;
+    const deliveryTimeSlots = this.getDeliveryTimeSlots(settings);
+    this.populateTimeSlots('zapiet-delivery-time', deliveryTimeSlots);
 
     if (checkButton) {
       checkButton.addEventListener('click', () => this.handleDeliveryCheck(data));
@@ -404,24 +482,42 @@ class ZapietWidget {
       return;
     }
 
-    const isValid = this.validatePostalCode(postalCode, data.settings);
+    const matchingLocations = this.filterDeliveryLocationsByPostalCode(
+      postalCode,
+      data.settings,
+      this.eligibleDeliveryLocations
+    );
+    const isValid = matchingLocations.length > 0;
 
     if (isValid) {
       resultDiv.innerHTML = '<div class="zapiet-success-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Great! You are eligible for delivery.</div>';
+      this.deliveryLocationsForPostal = matchingLocations;
       
       const postalAttr = document.getElementById('attr-postal-code') as HTMLInputElement;
       if (postalAttr) postalAttr.value = postalCode;
       
       this.setMethodAttribute('Delivery');
       
-      if (deliveryDateField) {
-        deliveryDateField.parentElement!.parentElement!.style.display = 'grid';
-        deliveryDateField.parentElement!.style.display = 'flex';
+      const deliveryAvailable = document.getElementById('zapiet-delivery-available');
+      if (deliveryAvailable) {
+        deliveryAvailable.style.display = 'block';
+        deliveryAvailable.style.visibility = 'visible';
+      }
+      
+      if (deliveryDateField && deliveryDateField.parentElement) {
+        const dateFieldWrapper = deliveryDateField.parentElement;
+        dateFieldWrapper.style.display = 'flex';
+        
+        const datetimeContainer = dateFieldWrapper.parentElement;
+        if (datetimeContainer) {
+          datetimeContainer.style.display = 'grid';
+        }
       }
       
       this.setupProgressiveDelivery(data);
     } else {
       resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>Sorry, we do not deliver to your postal code.</div>';
+      this.deliveryLocationsForPostal = null;
       this.hideDeliveryFields();
     }
   }
@@ -436,6 +532,7 @@ class ZapietWidget {
     if (deliveryTimeField) deliveryTimeField.parentElement!.style.display = 'none';
     if (noteContainer) noteContainer.style.display = 'none';
     if (rateDisplay) rateDisplay.style.display = 'none';
+    this.deliveryLocationsForPostal = null;
   }
 
   private setupProgressiveDelivery(data: WidgetData): void {
@@ -446,9 +543,13 @@ class ZapietWidget {
 
     if (!deliveryDateField || !deliveryTimeField) return;
 
-    if (deliveryTimeField) deliveryTimeField.parentElement!.style.display = 'none';
+    if (deliveryTimeField) {
+      deliveryTimeField.parentElement!.style.display = 'none';
+    }
     if (noteContainer) noteContainer.style.display = 'none';
     if (rateDisplay) rateDisplay.style.display = 'none';
+
+    deliveryDateField.parentElement!.style.display = 'flex';
 
     deliveryDateField.addEventListener('change', () => {
       if (deliveryDateField.value && deliveryTimeField) {
@@ -473,36 +574,41 @@ class ZapietWidget {
     });
   }
 
-  private validatePostalCode(postalCode: string, settings: WidgetSettings): boolean {
-    const conditions = settings.deliveryActivationConditions || '{}';
+  private filterDeliveryLocationsByPostalCode(
+    postalCode: string,
+    settings: WidgetSettings,
+    locations: Location[]
+  ): Location[] {
     const validationMode = settings.postalCodeValidation || 'none';
+    if (validationMode === 'none') return locations;
 
-    try {
-      const rules: ActivationConditions = JSON.parse(conditions);
-
+    return locations.filter(location => {
+      const rules = this.parseActivationConditions(location.deliveryActivationConditions);
       if (!rules.deliveryZones || rules.deliveryZones.length === 0) {
         return true;
       }
 
-      if (validationMode === 'none') {
-        return true;
-      } else if (validationMode === 'partial') {
+      if (validationMode === 'partial') {
         const prefix = postalCode.substring(0, 3);
         return rules.deliveryZones.some(zone => prefix === zone.toUpperCase().substring(0, 3));
-      } else if (validationMode === 'full') {
-        return rules.deliveryZones.some(zone => postalCode === zone.toUpperCase().replace(/\s/g, ''));
+      }
+
+      if (validationMode === 'full') {
+        return rules.deliveryZones.some(
+          zone => postalCode === zone.toUpperCase().replace(/\s/g, '')
+        );
       }
 
       return true;
-    } catch (e) {
-      console.error('Error validating postal code:', e);
-      return true;
-    }
+    });
   }
 
   private calculateDeliveryRate(data: WidgetData): void {
-    const { locations, rates } = data;
-    const deliveryLocations = locations.filter(l => l.isDelivery);
+    const { rates } = data;
+    const deliveryLocations =
+      this.deliveryLocationsForPostal && this.deliveryLocationsForPostal.length > 0
+        ? this.deliveryLocationsForPostal
+        : this.eligibleDeliveryLocations;
     const deliveryRates: Rate[] = [];
 
     deliveryLocations.forEach(loc => {
@@ -629,6 +735,7 @@ class ZapietWidget {
   private async updateCartAttributes(): Promise<void> {
     const attributes: Record<string, string> = {};
     
+    const orderNoteInput = document.getElementById('attr-order-note') as HTMLInputElement;
     const methodInput = document.getElementById('attr-method') as HTMLInputElement;
     const locationInput = document.getElementById('attr-location') as HTMLInputElement;
     const dateInput = document.getElementById('attr-date') as HTMLInputElement;
@@ -637,6 +744,7 @@ class ZapietWidget {
     const postalCodeInput = document.getElementById('attr-postal-code') as HTMLInputElement;
     const deliveryNoteInput = document.getElementById('attr-delivery-note') as HTMLInputElement;
     
+    if (orderNoteInput?.value) attributes['_zapiet_order_note'] = orderNoteInput.value;
     if (methodInput?.value) attributes['_zapiet_method'] = methodInput.value;
     if (locationInput?.value) attributes['_zapiet_location'] = locationInput.value;
     if (dateInput?.value) attributes['_zapiet_date'] = dateInput.value;
@@ -666,10 +774,5 @@ class ZapietWidget {
     }
   }
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const widget = new ZapietWidget('zapiet-widget-root');
-  widget.init();
-});
 
 (window as any).ZapietWidget = ZapietWidget;

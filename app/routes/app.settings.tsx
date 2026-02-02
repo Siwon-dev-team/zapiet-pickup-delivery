@@ -45,6 +45,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         preselectLocation: "",
         locationSortOrder: "newest",
         fallbackRate: 0,
+        deliveryTimeSlots: "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM",
       } as any,
     });
   }
@@ -63,8 +64,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     deliveryTitle: formData.get("deliveryTitle") as string,
     primaryColor: formData.get("primaryColor") as string,
     logoUrl: formData.get("logoUrl") as string,
-    pickupActivationConditions: formData.get("pickupActivationConditions") as string,
-    deliveryActivationConditions: formData.get("deliveryActivationConditions") as string,
     autoTagPickup: formData.get("autoTagPickup") as string,
     autoTagDelivery: formData.get("autoTagDelivery") as string,
     enableSecurityCode: formData.get("enableSecurityCode") === "on",
@@ -74,6 +73,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     preselectLocation: formData.get("preselectLocation") as string,
     locationSortOrder: formData.get("locationSortOrder") as string,
     fallbackRate: parseFloat(formData.get("fallbackRate") as string) || 0,
+    deliveryTimeSlots: formData.get("deliveryTimeSlots") as string,
   };
 
   await db.settings.upsert({
@@ -97,12 +97,6 @@ export default function SettingsPage() {
   const [enableSecurityCode, setEnableSecurityCode] = useState(settings.enableSecurityCode);
   const [enablePickupNote, setEnablePickupNote] = useState(settings.enablePickupNote || false);
   const [enableDeliveryNote, setEnableDeliveryNote] = useState(settings.enableDeliveryNote || false);
-  const [pickupConditions, setPickupConditions] = useState(
-    settings.pickupActivationConditions || "{}"
-  );
-  const [deliveryConditions, setDeliveryConditions] = useState(
-    settings.deliveryActivationConditions || "{}"
-  );
   const [pickupTitle, setPickupTitle] = useState(settings.pickupTitle || "Store Pickup");
   const [deliveryTitle, setDeliveryTitle] = useState(settings.deliveryTitle || "Local Delivery");
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor || "#008060");
@@ -113,6 +107,10 @@ export default function SettingsPage() {
   const [locationSortOrder, setLocationSortOrder] = useState(settings.locationSortOrder || "newest");
   const [postalCodeValidation, setPostalCodeValidation] = useState(settings.postalCodeValidation || "none");
   const [fallbackRate, setFallbackRate] = useState(String(settings.fallbackRate || 0));
+  const [deliveryTimeSlots, setDeliveryTimeSlots] = useState(
+    settings.deliveryTimeSlots ||
+      "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM"
+  );
 
   const handleSubmit = () => {
     const form = document.querySelector('form');
@@ -149,24 +147,6 @@ export default function SettingsPage() {
                   onChange={setPickupTitle}
                   autoComplete="off"
                   helpText="This will appear as the option name during checkout"
-                />
-                
-                <Divider />
-                
-                <Text as="h3" variant="headingSm">Activation Conditions</Text>
-                <Text as="p" tone="subdued">
-                  Define when pickup should be available (JSON format)
-                </Text>
-                
-                <TextField
-                  label="Pickup Conditions"
-                  name="pickupActivationConditions"
-                  value={pickupConditions}
-                  onChange={setPickupConditions}
-                  multiline={4}
-                  autoComplete="off"
-                  helpText='Example: {"minOrderValue": 10, "maxOrderValue": 1000, "minWeight": 0, "maxWeight": 50}'
-                  placeholder='{"minOrderValue": 0}'
                 />
                 
                 <TextField
@@ -250,21 +230,6 @@ export default function SettingsPage() {
                   helpText="This will appear as the option name during checkout"
                 />
                 
-                <Divider />
-                
-                <Text as="h3" variant="headingSm">Activation Conditions</Text>
-                
-                <TextField
-                  label="Delivery Conditions"
-                  name="deliveryActivationConditions"
-                  value={deliveryConditions}
-                  onChange={setDeliveryConditions}
-                  multiline={4}
-                  autoComplete="off"
-                  helpText='Example: {"minOrderValue": 25, "deliveryZones": ["K1A", "K1B", "K1C"]}'
-                  placeholder='{"minOrderValue": 0}'
-                />
-                
                 <Select
                   label="Postal Code Validation"
                   name="postalCodeValidation"
@@ -276,6 +241,16 @@ export default function SettingsPage() {
                   value={postalCodeValidation}
                   onChange={setPostalCodeValidation}
                   helpText="Validate customer postal code against delivery zones"
+                />
+
+                <TextField
+                  label="Delivery Time Slots"
+                  name="deliveryTimeSlots"
+                  value={deliveryTimeSlots}
+                  onChange={setDeliveryTimeSlots}
+                  autoComplete="off"
+                  helpText="Comma-separated time ranges shown in the delivery dropdown"
+                  placeholder="9:00 AM - 12:00 PM, 12:00 PM - 3:00 PM"
                 />
                 
                 <TextField
@@ -354,33 +329,30 @@ export default function SettingsPage() {
                 
                 <BlockStack gap="300">
                   <div>
-                    <Text as="p" fontWeight="semibold">Activation Conditions Format:</Text>
+                    <Text as="p" fontWeight="semibold">Activation Conditions:</Text>
                     <Text as="p" tone="subdued">
-                      Use JSON to define rules. Supported fields:
+                      Conditions are configured per location. Use the Locations page to set pickup
+                      and delivery limits with the simple form inputs.
                     </Text>
-                    <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
-                      <li><code>minOrderValue</code>: Minimum cart total ($)</li>
-                      <li><code>maxOrderValue</code>: Maximum cart total ($)</li>
-                      <li><code>minWeight</code>: Minimum total weight (kg)</li>
-                      <li><code>maxWeight</code>: Maximum total weight (kg)</li>
-                      <li><code>deliveryZones</code>: Array of postal code prefixes</li>
-                    </ul>
                   </div>
                   
                   <div>
-                    <Text as="p" fontWeight="semibold">Example Configurations:</Text>
-                    <div style={{ 
-                      background: "#f6f6f7", 
-                      padding: "12px", 
+                    <Text as="p" fontWeight="semibold">Sample Data For Testing:</Text>
+                    <Text as="p" tone="subdued">
+                      Use the sample values below to quickly trigger pickup and delivery in the widget.
+                    </Text>
+                    <div style={{
+                      background: "#f6f6f7",
+                      padding: "12px",
                       borderRadius: "8px",
                       fontFamily: "monospace",
                       fontSize: "12px",
                       marginTop: "8px"
                     }}>
-                      <div>Pickup: {`{"minOrderValue": 10, "maxWeight": 25}`}</div>
-                      <div style={{ marginTop: "4px" }}>
-                        Delivery: {`{"minOrderValue": 25, "deliveryZones": ["K1A", "K1B"]}`}
-                      </div>
+                      <div>Sample address: 45585 Luckakuck Way, Chilliwack, BC V2R 1A1</div>
+                      <div>Sample order total: $29.99+</div>
+                      <div>Sample delivery zone: V2R (partial) or V2R 1A1 (full)</div>
+                      <div>Sample pickup time slot: 5:00 PM - 11:00 PM</div>
                     </div>
                   </div>
                 </BlockStack>

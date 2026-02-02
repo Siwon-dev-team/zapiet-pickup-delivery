@@ -45,6 +45,9 @@ model Location {
   isDelivery      Boolean  @default(false)
   // Store hours as a JSON string: { "monday": "9-5", "tuesday": "9-5", ... }
   businessHours   String   @default("{}") 
+  // Activation conditions stored as JSON strings per location
+  pickupActivationConditions   String   @default("{}")
+  deliveryActivationConditions String   @default("{}")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   rates           Rate[]
@@ -86,4 +89,5 @@ model Settings {
   preselectLocation             String  @default("")
   locationSortOrder             String  @default("newest")
   fallbackRate                  Float   @default(0)
+  deliveryTimeSlots             String  @default("9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM")
 }

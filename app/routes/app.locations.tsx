@@ -57,6 +57,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const isPickup = formData.get("isPickup") === "true";
       const isDelivery = formData.get("isDelivery") === "true";
       const businessHours = formData.get("businessHours") as string;
+      const pickupActivationConditions = formData.get("pickupActivationConditions") as string;
+      const deliveryActivationConditions = formData.get("deliveryActivationConditions") as string;
 
       if (!name) {
         return json({ error: "Name is required" }, { status: 400 });
@@ -72,6 +74,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         isPickup,
         isDelivery,
         businessHours: businessHours || "{}",
+        pickupActivationConditions: pickupActivationConditions || "{}",
+        deliveryActivationConditions: deliveryActivationConditions || "{}",
       };
 
       if (action === "create") {
@@ -115,6 +119,14 @@ type FetcherData = {
   error?: string;
 };
 
+type ActivationConditions = {
+  minOrderValue?: number;
+  maxOrderValue?: number;
+  minWeight?: number;
+  maxWeight?: number;
+  deliveryZones?: string[];
+};
+
 export default function LocationsPage() {
   const { locations } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<FetcherData>();
@@ -133,6 +145,59 @@ export default function LocationsPage() {
   const [isDelivery, setIsDelivery] = useState(false);
   const [businessHours, setBusinessHours] = useState("{}");
   const [showAdvancedHours, setShowAdvancedHours] = useState(false);
+  const [pickupMinOrder, setPickupMinOrder] = useState("");
+  const [pickupMaxOrder, setPickupMaxOrder] = useState("");
+  const [pickupMinWeight, setPickupMinWeight] = useState("");
+  const [pickupMaxWeight, setPickupMaxWeight] = useState("");
+  const [deliveryMinOrder, setDeliveryMinOrder] = useState("");
+  const [deliveryMaxOrder, setDeliveryMaxOrder] = useState("");
+  const [deliveryMinWeight, setDeliveryMinWeight] = useState("");
+  const [deliveryMaxWeight, setDeliveryMaxWeight] = useState("");
+  const [deliveryZones, setDeliveryZones] = useState("");
+
+  const parseConditions = (raw?: string | null): ActivationConditions => {
+    if (!raw) return {};
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed === "{}") return {};
+    let jsonString = trimmed;
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonString = trimmed.slice(firstBrace, lastBrace + 1);
+    }
+    try {
+      return JSON.parse(jsonString) as ActivationConditions;
+    } catch {
+      return {};
+    }
+  };
+
+  const toNumberString = (value?: number) =>
+    value === 0 || typeof value === "number" ? String(value) : "";
+
+  const buildConditions = (options: {
+    minOrder?: string;
+    maxOrder?: string;
+    minWeight?: string;
+    maxWeight?: string;
+    zones?: string;
+  }) => {
+    const conditions: ActivationConditions = {};
+    if (options.minOrder) conditions.minOrderValue = Number(options.minOrder);
+    if (options.maxOrder) conditions.maxOrderValue = Number(options.maxOrder);
+    if (options.minWeight) conditions.minWeight = Number(options.minWeight);
+    if (options.maxWeight) conditions.maxWeight = Number(options.maxWeight);
+
+    if (options.zones) {
+      const zones = options.zones
+        .split(",")
+        .map(zone => zone.trim())
+        .filter(Boolean);
+      if (zones.length > 0) conditions.deliveryZones = zones;
+    }
+
+    return JSON.stringify(conditions);
+  };
 
   // Search/Filter state
   const [queryValue, setQueryValue] = useState("");
@@ -155,6 +220,17 @@ export default function LocationsPage() {
       setIsPickup(location.isPickup);
       setIsDelivery(location.isDelivery);
       setBusinessHours(location.businessHours || "{}");
+      const pickupConditions = parseConditions(location.pickupActivationConditions);
+      setPickupMinOrder(toNumberString(pickupConditions.minOrderValue));
+      setPickupMaxOrder(toNumberString(pickupConditions.maxOrderValue));
+      setPickupMinWeight(toNumberString(pickupConditions.minWeight));
+      setPickupMaxWeight(toNumberString(pickupConditions.maxWeight));
+      const deliveryConditions = parseConditions(location.deliveryActivationConditions);
+      setDeliveryMinOrder(toNumberString(deliveryConditions.minOrderValue));
+      setDeliveryMaxOrder(toNumberString(deliveryConditions.maxOrderValue));
+      setDeliveryMinWeight(toNumberString(deliveryConditions.minWeight));
+      setDeliveryMaxWeight(toNumberString(deliveryConditions.maxWeight));
+      setDeliveryZones((deliveryConditions.deliveryZones || []).join(", "));
     } else {
       // Create mode
       setEditingLocation(null);
@@ -166,6 +242,15 @@ export default function LocationsPage() {
       setIsPickup(true);
       setIsDelivery(false);
       setBusinessHours("{}");
+      setPickupMinOrder("");
+      setPickupMaxOrder("");
+      setPickupMinWeight("");
+      setPickupMaxWeight("");
+      setDeliveryMinOrder("");
+      setDeliveryMaxOrder("");
+      setDeliveryMinWeight("");
+      setDeliveryMaxWeight("");
+      setDeliveryZones("");
     }
     setModalActive(true);
   };
@@ -189,6 +274,25 @@ export default function LocationsPage() {
     formData.append("isPickup", String(isPickup));
     formData.append("isDelivery", String(isDelivery));
     formData.append("businessHours", businessHours);
+    formData.append(
+      "pickupActivationConditions",
+      buildConditions({
+        minOrder: pickupMinOrder,
+        maxOrder: pickupMaxOrder,
+        minWeight: pickupMinWeight,
+        maxWeight: pickupMaxWeight,
+      })
+    );
+    formData.append(
+      "deliveryActivationConditions",
+      buildConditions({
+        minOrder: deliveryMinOrder,
+        maxOrder: deliveryMaxOrder,
+        minWeight: deliveryMinWeight,
+        maxWeight: deliveryMaxWeight,
+        zones: deliveryZones,
+      })
+    );
 
     fetcher.submit(formData, { method: "post" });
     handleCloseModal();
@@ -532,6 +636,85 @@ export default function LocationsPage() {
               checked={isDelivery}
               onChange={setIsDelivery}
             />
+
+            <BlockStack gap="200">
+              <Text as="h3" variant="headingSm">Pickup Conditions</Text>
+              <InlineStack gap="300">
+                <TextField
+                  label="Min Order ($)"
+                  type="number"
+                  value={pickupMinOrder}
+                  onChange={setPickupMinOrder}
+                  autoComplete="off"
+                />
+                <TextField
+                  label="Max Order ($)"
+                  type="number"
+                  value={pickupMaxOrder}
+                  onChange={setPickupMaxOrder}
+                  autoComplete="off"
+                />
+              </InlineStack>
+              <InlineStack gap="300">
+                <TextField
+                  label="Min Weight (kg)"
+                  type="number"
+                  value={pickupMinWeight}
+                  onChange={setPickupMinWeight}
+                  autoComplete="off"
+                />
+                <TextField
+                  label="Max Weight (kg)"
+                  type="number"
+                  value={pickupMaxWeight}
+                  onChange={setPickupMaxWeight}
+                  autoComplete="off"
+                />
+              </InlineStack>
+            </BlockStack>
+
+            <BlockStack gap="200">
+              <Text as="h3" variant="headingSm">Delivery Conditions</Text>
+              <InlineStack gap="300">
+                <TextField
+                  label="Min Order ($)"
+                  type="number"
+                  value={deliveryMinOrder}
+                  onChange={setDeliveryMinOrder}
+                  autoComplete="off"
+                />
+                <TextField
+                  label="Max Order ($)"
+                  type="number"
+                  value={deliveryMaxOrder}
+                  onChange={setDeliveryMaxOrder}
+                  autoComplete="off"
+                />
+              </InlineStack>
+              <InlineStack gap="300">
+                <TextField
+                  label="Min Weight (kg)"
+                  type="number"
+                  value={deliveryMinWeight}
+                  onChange={setDeliveryMinWeight}
+                  autoComplete="off"
+                />
+                <TextField
+                  label="Max Weight (kg)"
+                  type="number"
+                  value={deliveryMaxWeight}
+                  onChange={setDeliveryMaxWeight}
+                  autoComplete="off"
+                />
+              </InlineStack>
+              <TextField
+                label="Delivery Zones (comma-separated)"
+                value={deliveryZones}
+                onChange={setDeliveryZones}
+                autoComplete="off"
+                helpText="Use postal code prefixes or full codes (e.g., V2R, V2R 1A1)"
+              />
+            </BlockStack>
 
             <BlockStack gap="300">
               <InlineStack align="space-between">

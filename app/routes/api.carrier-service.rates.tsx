@@ -64,6 +64,14 @@ interface ShopifyRateResponse {
   }>;
 }
 
+interface ActivationConditions {
+  minOrderValue?: number;
+  maxOrderValue?: number;
+  minWeight?: number;
+  maxWeight?: number;
+  deliveryZones?: string[];
+}
+
 export const action = async ({ request }: ActionFunctionArgs) => {
   if (request.method !== "POST") {
     return json({ error: "Method not allowed" }, { status: 405 });
@@ -106,34 +114,50 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const rates: ShopifyRateResponse['rates'] = [];
 
-    const checkActivation = (conditionsStr: string): boolean => {
-      if (!conditionsStr || conditionsStr === '{}') return true;
-      
+    const parseActivationConditions = (
+      conditionsStr: string | null | undefined
+    ): ActivationConditions => {
+      if (!conditionsStr) return {};
+      const trimmed = conditionsStr.trim();
+      if (!trimmed || trimmed === "{}") return {};
+
+      let jsonString = trimmed;
+      const firstBrace = trimmed.indexOf("{");
+      const lastBrace = trimmed.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonString = trimmed.slice(firstBrace, lastBrace + 1);
+      }
+
       try {
-        const conditions = JSON.parse(conditionsStr);
-        
-        if (conditions.minOrderValue && cartTotal < conditions.minOrderValue) {
-          return false;
-        }
-        if (conditions.maxOrderValue && cartTotal > conditions.maxOrderValue) {
-          return false;
-        }
-        if (conditions.minWeight && cartWeight < conditions.minWeight) {
-          return false;
-        }
-        if (conditions.maxWeight && cartWeight > conditions.maxWeight) {
-          return false;
-        }
-        
-        return true;
+        return JSON.parse(jsonString) as ActivationConditions;
       } catch (e) {
         console.error("Error parsing activation conditions:", e);
-        return true;
+        return {};
       }
     };
 
-    if (settings?.enablePickup && checkActivation(settings.pickupActivationConditions || '{}')) {
-      const pickupLocations = locations.filter(loc => loc.isPickup);
+    const matchesCartConditions = (conditions: ActivationConditions): boolean => {
+      if (conditions.minOrderValue && cartTotal < conditions.minOrderValue) {
+        return false;
+      }
+      if (conditions.maxOrderValue && cartTotal > conditions.maxOrderValue) {
+        return false;
+      }
+      if (conditions.minWeight && cartWeight < conditions.minWeight) {
+        return false;
+      }
+      if (conditions.maxWeight && cartWeight > conditions.maxWeight) {
+        return false;
+      }
+      return true;
+    };
+
+    if (settings?.enablePickup) {
+      const pickupLocations = locations.filter(loc => {
+        if (!loc.isPickup) return false;
+        const conditions = parseActivationConditions(loc.pickupActivationConditions);
+        return matchesCartConditions(conditions);
+      });
 
       for (const location of pickupLocations) {
         let ratePrice = settings.fallbackRate || 0;
@@ -166,65 +190,60 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
     }
 
-    if (settings?.enableDelivery && checkActivation(settings.deliveryActivationConditions || '{}')) {
-      let deliveryAvailable = true;
-      
-      if (settings.postalCodeValidation !== 'none') {
-        const customerPostal = body.rate.destination.postal_code?.toUpperCase().replace(/\s/g, '');
-        
-        try {
-          const deliveryConditions = JSON.parse(settings.deliveryActivationConditions || '{}');
-          const deliveryZones = deliveryConditions.deliveryZones || [];
-          
-          if (deliveryZones.length > 0) {
-            if (settings.postalCodeValidation === 'partial') {
-              const prefix = customerPostal?.substring(0, 3) || '';
-              deliveryAvailable = deliveryZones.some((zone: string) => 
-                zone.toUpperCase().substring(0, 3) === prefix
-              );
-            } else if (settings.postalCodeValidation === 'full') {
-              deliveryAvailable = deliveryZones.some((zone: string) => 
-                zone.toUpperCase().replace(/\s/g, '') === customerPostal
-              );
-            }
-          }
-        } catch (e) {
-          console.error("Error validating postal code:", e);
+    if (settings?.enableDelivery) {
+      const customerPostal = body.rate.destination.postal_code?.toUpperCase().replace(/\s/g, "");
+      const deliveryLocations = locations.filter(loc => {
+        if (!loc.isDelivery) return false;
+        const conditions = parseActivationConditions(loc.deliveryActivationConditions);
+        if (!matchesCartConditions(conditions)) return false;
+
+        if (settings.postalCodeValidation === "none") return true;
+
+        const deliveryZones = conditions.deliveryZones || [];
+        if (deliveryZones.length === 0) return true;
+
+        if (settings.postalCodeValidation === "partial") {
+          const prefix = customerPostal?.substring(0, 3) || "";
+          return deliveryZones.some(zone => zone.toUpperCase().substring(0, 3) === prefix);
         }
-      }
 
-      if (deliveryAvailable) {
-        const deliveryLocations = locations.filter(loc => loc.isDelivery);
-
-        for (const location of deliveryLocations) {
-          let ratePrice = settings.fallbackRate || 0;
-          let rateName = "Free Delivery";
-
-          const applicableRate = location.rates.find(rate => {
-            if (rate.type === 'PRICE') {
-              return cartTotal >= rate.min && (!rate.max || cartTotal <= rate.max);
-            } else if (rate.type === 'WEIGHT') {
-              return cartWeight >= rate.min && (!rate.max || cartWeight <= rate.max);
-            }
-            return false;
-          });
-
-          if (applicableRate) {
-            ratePrice = applicableRate.price;
-            rateName = applicableRate.name;
-          } else if (location.rates.length > 0) {
-            ratePrice = settings.fallbackRate || 0;
-            rateName = ratePrice === 0 ? "Free Delivery" : "Local Delivery";
-          }
-
-          rates.push({
-            service_name: `${settings.deliveryTitle || 'Local Delivery'} - ${location.name}`,
-            service_code: `delivery_${location.id}`,
-            total_price: Math.round(ratePrice * 100), // Convert to cents
-            description: `Delivery to ${body.rate.destination.city || body.rate.destination.postal_code}`,
-            currency: body.rate.currency,
-          });
+        if (settings.postalCodeValidation === "full") {
+          return deliveryZones.some(
+            zone => zone.toUpperCase().replace(/\s/g, "") === customerPostal
+          );
         }
+
+        return true;
+      });
+
+      for (const location of deliveryLocations) {
+        let ratePrice = settings.fallbackRate || 0;
+        let rateName = "Free Delivery";
+
+        const applicableRate = location.rates.find(rate => {
+          if (rate.type === "PRICE") {
+            return cartTotal >= rate.min && (!rate.max || cartTotal <= rate.max);
+          } else if (rate.type === "WEIGHT") {
+            return cartWeight >= rate.min && (!rate.max || cartWeight <= rate.max);
+          }
+          return false;
+        });
+
+        if (applicableRate) {
+          ratePrice = applicableRate.price;
+          rateName = applicableRate.name;
+        } else if (location.rates.length > 0) {
+          ratePrice = settings.fallbackRate || 0;
+          rateName = ratePrice === 0 ? "Free Delivery" : "Local Delivery";
+        }
+
+        rates.push({
+          service_name: `${settings.deliveryTitle || "Local Delivery"} - ${location.name}`,
+          service_code: `delivery_${location.id}`,
+          total_price: Math.round(ratePrice * 100), // Convert to cents
+          description: `Delivery to ${body.rate.destination.city || body.rate.destination.postal_code}`,
+          currency: body.rate.currency,
+        });
       }
     }
 
