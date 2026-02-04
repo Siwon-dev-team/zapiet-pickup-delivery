@@ -82,13 +82,18 @@ class ZapietWidget {
     const content = this.root.querySelector<HTMLElement>('.zapiet-content');
 
     try {
-      const response = await fetch(`/apps/zapiet?shop=${this.shop}`);
+      const apiUrl = `/apps/zapiet?shop=${this.shop}`;
+      const response = await fetch(apiUrl);
       
       if (!response.ok) {
-        throw new Error(`API responded with status ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`API error ${response.status}: ${errorText}`);
       }
       
       const data: WidgetData = await response.json();
+      if (!data || !data.settings) {
+        throw new Error('Invalid API response: missing data');
+      }
       
       if (loading) {
         loading.style.display = 'none';
@@ -111,9 +116,18 @@ class ZapietWidget {
       this.applyPrimaryColor(data.settings.primaryColor);
       this.initWidget(data);
     } catch (err) {
+      console.error('[Zapiet] Widget Error:', err);
       if (loading) {
-        loading.textContent = 'Unable to load options. Please refresh the page.';
-        loading.style.color = '#dc2626';
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        loading.innerHTML = `
+          <div style="color: #dc2626; font-size: 14px;">
+            <strong>Unable to load pickup/delivery options</strong><br>
+            <small>${errorMsg}</small><br>
+            <button onclick="location.reload()" style="margin-top: 8px; padding: 4px 12px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+              Refresh Page
+            </button>
+          </div>
+        `;
       }
     }
   }
@@ -122,6 +136,10 @@ class ZapietWidget {
     if (color) {
       this.root.style.setProperty('--zapiet-primary-color', color);
     }
+  }
+
+  private getRootElement<T extends Element>(selector: string): T | null {
+    return this.root.querySelector(selector) as T | null;
   }
 
   private parseActivationConditions(conditions: string | null | undefined): ActivationConditions {
@@ -189,7 +207,7 @@ class ZapietWidget {
   private initWidget(data: WidgetData): void {
     const { settings, locations } = data;
     
-    const orderNoteField = document.getElementById('zapiet-order-note') as HTMLTextAreaElement;
+    const orderNoteField = this.getRootElement<HTMLTextAreaElement>('#zapiet-order-note');
     const orderNoteAttr = document.getElementById('attr-order-note') as HTMLInputElement;
     if (orderNoteField && orderNoteAttr) {
       orderNoteField.addEventListener('input', () => {
@@ -199,11 +217,9 @@ class ZapietWidget {
     }
     
     const methodInput = document.getElementById('attr-method') as HTMLInputElement;
-    const errorDiv = document.getElementById('zapiet-error');
-    const deliveryBtn = document.getElementById('btn-delivery');
-    const pickupBtn = document.getElementById('btn-pickup');
-
-    if (!methodInput) return;
+    const errorDiv = this.getRootElement<HTMLElement>('#zapiet-error');
+    const deliveryBtn = this.getRootElement<HTMLElement>('#btn-delivery');
+    const pickupBtn = this.getRootElement<HTMLElement>('#btn-pickup');
 
     const pickupLocations = locations.filter(l => l.isPickup);
     const deliveryLocations = locations.filter(l => l.isDelivery);
@@ -228,7 +244,7 @@ class ZapietWidget {
       if (!hasValidMethod) {
         pickupBtn.classList.add('active');
         this.showPanel('panel-pickup');
-        methodInput.value = 'Pickup';
+        if (methodInput) methodInput.value = 'Pickup';
         hasValidMethod = true;
       }
     } else if (pickupBtn) {
@@ -240,7 +256,7 @@ class ZapietWidget {
       if (!hasValidMethod) {
         deliveryBtn.classList.add('active');
         this.showPanel('panel-delivery');
-        methodInput.value = 'Delivery';
+        if (methodInput) methodInput.value = 'Delivery';
         hasValidMethod = true;
       }
     } else if (deliveryBtn) {
@@ -265,13 +281,13 @@ class ZapietWidget {
   }
 
   private showPanel(panelId: string): void {
-    const panel = document.getElementById(panelId);
+    const panel = this.getRootElement<HTMLElement>(`#${panelId}`);
     if (panel) panel.style.display = 'block';
   }
 
   private setupPickup(data: WidgetData): void {
     const { settings, rates } = data;
-    const locationList = document.getElementById('zapiet-location-list');
+    const locationList = this.getRootElement<HTMLElement>('#zapiet-location-list');
     if (!locationList) return;
 
     locationList.innerHTML = '';
@@ -321,10 +337,10 @@ class ZapietWidget {
     });
 
     if (settings.enablePickupNote) {
-      const noteContainer = document.getElementById('zapiet-pickup-note-container');
+      const noteContainer = this.getRootElement<HTMLElement>('#zapiet-pickup-note-container');
       if (noteContainer) noteContainer.style.display = 'block';
 
-      const noteField = document.getElementById('zapiet-pickup-note') as HTMLTextAreaElement;
+      const noteField = this.getRootElement<HTMLTextAreaElement>('#zapiet-pickup-note');
       const noteAttr = document.getElementById('attr-pickup-note') as HTMLInputElement;
       if (noteField && noteAttr) {
         noteField.addEventListener('input', () => {
@@ -336,13 +352,13 @@ class ZapietWidget {
   }
 
   private handleLocationSelection(item: HTMLElement, location: Location, rates: Rate[]): void {
-    document.querySelectorAll('.zapiet-location-item').forEach(el => el.classList.remove('selected'));
+    this.root.querySelectorAll('.zapiet-location-item').forEach(el => el.classList.remove('selected'));
     item.classList.add('selected');
 
     const locInput = document.getElementById('attr-location') as HTMLInputElement;
     if (locInput) locInput.value = location.name;
 
-    const datetimeDiv = document.getElementById('zapiet-pickup-datetime');
+    const datetimeDiv = this.getRootElement<HTMLElement>('#zapiet-pickup-datetime');
     if (datetimeDiv) datetimeDiv.style.display = 'block';
 
     this.populateTimeSlots('zapiet-pickup-time');
@@ -374,7 +390,7 @@ class ZapietWidget {
   }
 
   private populateTimeSlots(selectId: string, timeSlots?: string[]): void {
-    const select = document.getElementById(selectId) as HTMLSelectElement;
+    const select = this.getRootElement<HTMLSelectElement>(`#${selectId}`);
     if (!select) return;
 
     select.innerHTML = '<option value="">Select time...</option>';
@@ -398,7 +414,7 @@ class ZapietWidget {
 
   private calculatePickupRate(locationId: string, rates: Rate[]): void {
     const pickupRates = rates.filter(r => r.locationId === locationId);
-    const rateDisplay = document.getElementById('zapiet-pickup-rate');
+    const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-pickup-rate');
     if (!rateDisplay || !this.data) return;
 
     if (pickupRates.length > 0) {
@@ -431,8 +447,8 @@ class ZapietWidget {
   private setupDelivery(data: WidgetData): void {
     const { settings } = data;
     this.deliveryLocationsForPostal = null;
-    const checkButton = document.getElementById('zapiet-check-delivery');
-    const postalInput = document.getElementById('zapiet-postal-code') as HTMLInputElement;
+    const checkButton = this.getRootElement<HTMLElement>('#zapiet-check-delivery');
+    const postalInput = this.getRootElement<HTMLInputElement>('#zapiet-postal-code');
     const deliveryTimeSlots = this.getDeliveryTimeSlots(settings);
     this.populateTimeSlots('zapiet-delivery-time', deliveryTimeSlots);
 
@@ -450,10 +466,10 @@ class ZapietWidget {
     }
 
     if (settings.enableDeliveryNote) {
-      const noteContainer = document.getElementById('zapiet-delivery-note-container');
+      const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
       if (noteContainer) noteContainer.style.display = 'block';
 
-      const noteField = document.getElementById('zapiet-delivery-note') as HTMLTextAreaElement;
+      const noteField = this.getRootElement<HTMLTextAreaElement>('#zapiet-delivery-note');
       const noteAttr = document.getElementById('attr-delivery-note') as HTMLInputElement;
       if (noteField && noteAttr) {
         noteField.addEventListener('input', () => {
@@ -465,12 +481,12 @@ class ZapietWidget {
   }
 
   private handleDeliveryCheck(data: WidgetData): void {
-    const postalInput = document.getElementById('zapiet-postal-code') as HTMLInputElement;
-    const resultDiv = document.getElementById('zapiet-delivery-result');
-    const deliveryDateField = document.getElementById('zapiet-delivery-date') as HTMLInputElement;
-    const deliveryTimeField = document.getElementById('zapiet-delivery-time') as HTMLSelectElement;
-    const noteContainer = document.getElementById('zapiet-delivery-note-container');
-    const rateDisplay = document.getElementById('zapiet-delivery-rate');
+    const postalInput = this.getRootElement<HTMLInputElement>('#zapiet-postal-code');
+    const resultDiv = this.getRootElement<HTMLElement>('#zapiet-delivery-result');
+    const deliveryDateField = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
+    const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
+    const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
+    const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
 
     if (!postalInput || !resultDiv) return;
 
@@ -498,7 +514,7 @@ class ZapietWidget {
       
       this.setMethodAttribute('Delivery');
       
-      const deliveryAvailable = document.getElementById('zapiet-delivery-available');
+      const deliveryAvailable = this.getRootElement<HTMLElement>('#zapiet-delivery-available');
       if (deliveryAvailable) {
         deliveryAvailable.style.display = 'block';
         deliveryAvailable.style.visibility = 'visible';
@@ -523,10 +539,10 @@ class ZapietWidget {
   }
 
   private hideDeliveryFields(): void {
-    const deliveryDateField = document.getElementById('zapiet-delivery-date') as HTMLInputElement;
-    const deliveryTimeField = document.getElementById('zapiet-delivery-time') as HTMLSelectElement;
-    const noteContainer = document.getElementById('zapiet-delivery-note-container');
-    const rateDisplay = document.getElementById('zapiet-delivery-rate');
+    const deliveryDateField = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
+    const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
+    const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
+    const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
 
     if (deliveryDateField) deliveryDateField.parentElement!.parentElement!.style.display = 'none';
     if (deliveryTimeField) deliveryTimeField.parentElement!.style.display = 'none';
@@ -536,10 +552,10 @@ class ZapietWidget {
   }
 
   private setupProgressiveDelivery(data: WidgetData): void {
-    const deliveryDateField = document.getElementById('zapiet-delivery-date') as HTMLInputElement;
-    const deliveryTimeField = document.getElementById('zapiet-delivery-time') as HTMLSelectElement;
-    const noteContainer = document.getElementById('zapiet-delivery-note-container');
-    const rateDisplay = document.getElementById('zapiet-delivery-rate');
+    const deliveryDateField = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
+    const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
+    const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
+    const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
 
     if (!deliveryDateField || !deliveryTimeField) return;
 
@@ -616,7 +632,7 @@ class ZapietWidget {
       deliveryRates.push(...locRates);
     });
 
-    const rateDisplay = document.getElementById('zapiet-delivery-rate');
+    const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
     if (!rateDisplay) return;
 
     if (deliveryRates.length > 0) {
@@ -647,36 +663,47 @@ class ZapietWidget {
   }
 
   private setupCardSwitching(): void {
-    const deliveryBtn = document.getElementById('btn-delivery');
-    const pickupBtn = document.getElementById('btn-pickup');
-
-    if (deliveryBtn) {
-      deliveryBtn.addEventListener('click', () => {
+    const deliveryBtn = this.getRootElement<HTMLElement>('#btn-delivery');
+    const pickupBtn = this.getRootElement<HTMLElement>('#btn-pickup');
+    const pickupPanel = this.getRootElement<HTMLElement>('#panel-pickup');
+    const deliveryPanel = this.getRootElement<HTMLElement>('#panel-delivery');
+    
+    // Use event delegation on root element
+    this.root.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement;
+      
+      // Check if click is on delivery button or its children
+      const deliveryBtn = target.closest('#btn-delivery');
+      if (deliveryBtn) {
+        e.preventDefault();
+        e.stopPropagation();
         deliveryBtn.classList.add('active');
+        const pickupBtn = this.getRootElement<HTMLElement>('#btn-pickup');
         if (pickupBtn) pickupBtn.classList.remove('active');
         
-        const pickupPanel = document.getElementById('panel-pickup');
-        const deliveryPanel = document.getElementById('panel-delivery');
         if (pickupPanel) pickupPanel.style.display = 'none';
         if (deliveryPanel) deliveryPanel.style.display = 'block';
         
         this.setMethodAttribute('Delivery');
-      });
-    }
-
-    if (pickupBtn) {
-      pickupBtn.addEventListener('click', () => {
+        return;
+      }
+      
+      // Check if click is on pickup button or its children
+      const pickupBtn = target.closest('#btn-pickup');
+      if (pickupBtn) {
+        e.preventDefault();
+        e.stopPropagation();
         pickupBtn.classList.add('active');
-        if (deliveryBtn) deliveryBtn.classList.remove('active');
+        const delivBtn = this.getRootElement<HTMLElement>('#btn-delivery');
+        if (delivBtn) delivBtn.classList.remove('active');
         
-        const pickupPanel = document.getElementById('panel-pickup');
-        const deliveryPanel = document.getElementById('panel-delivery');
         if (pickupPanel) pickupPanel.style.display = 'block';
         if (deliveryPanel) deliveryPanel.style.display = 'none';
         
         this.setMethodAttribute('Pickup');
-      });
-    }
+        return;
+      }
+    }, true);
   }
 
   private setupDateMinimums(): void {
@@ -684,8 +711,8 @@ class ZapietWidget {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const minDate = tomorrow.toISOString().split('T')[0];
 
-    const pickupDate = document.getElementById('zapiet-pickup-date') as HTMLInputElement;
-    const deliveryDate = document.getElementById('zapiet-delivery-date') as HTMLInputElement;
+    const pickupDate = this.getRootElement<HTMLInputElement>('#zapiet-pickup-date');
+    const deliveryDate = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
 
     if (pickupDate) {
       pickupDate.min = minDate;
@@ -705,8 +732,8 @@ class ZapietWidget {
       });
     }
 
-    const pickupTime = document.getElementById('zapiet-pickup-time') as HTMLSelectElement;
-    const deliveryTime = document.getElementById('zapiet-delivery-time') as HTMLSelectElement;
+    const pickupTime = this.getRootElement<HTMLSelectElement>('#zapiet-pickup-time');
+    const deliveryTime = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
 
     if (pickupTime) {
       pickupTime.addEventListener('change', () => {

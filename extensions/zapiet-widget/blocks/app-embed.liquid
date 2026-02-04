@@ -18,23 +18,33 @@
   };
 
   const cartPageSelectors = [
-    '.cart-page__summary',
     '.cart__footer',
     '[data-cart-summary]',
     '.cart-summary',
     'form[action="/cart"] .cart-footer',
+    'form[action="/cart"] .cart__footer',
     '#main-cart-footer',
     '.cart-template__footer',
     '.cart__blocks',
     '.cart-footer',
+    '.totals',
+    '.cart__totals',
+    '[class*="cart"][class*="total"]',
+    '[class*="cart"][class*="summary"]',
     'form[action="/cart"] .cart__contents',
     'form[action="/cart"] .cart__items',
+    'form[action="/cart"] [class*="summary"]',
+    'form[action="/cart"] [class*="total"]',
     'form[action="/cart"]',
     '.cart__contents',
     '.cart__items',
     '.cart-items',
     '[data-cart-form]',
+    '#cart-form',
+    '.page-cart',
+    '#MainContent .cart',
     '#MainContent',
+    'main .cart',
     'main'
   ];
 
@@ -184,7 +194,18 @@
           </div>
         </div>
       </div>
-      
+    `;
+    
+    return container;
+  }
+  
+  function injectHiddenInputsIntoCartForm() {
+    const cartForm = document.querySelector('form[action="/cart"]');
+    if (!cartForm) return;
+    
+    if (document.getElementById('attr-order-note')) return;
+    
+    const hiddenInputsHTML = `
       <input type="hidden" name="attributes[Order Note]" id="attr-order-note" value="" />
       <input type="hidden" name="attributes[Method]" id="attr-method" value="" />
       <input type="hidden" name="attributes[Pickup Location]" id="attr-location" value="" />
@@ -196,14 +217,23 @@
       <input type="hidden" name="attributes[Delivery Note]" id="attr-delivery-note" value="" />
     `;
     
-    return container;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = hiddenInputsHTML;
+    tempDiv.style.display = 'none';
+    tempDiv.id = 'zapiet-hidden-inputs';
+    
+    cartForm.appendChild(tempDiv);
   }
 
   function initWidgetWhenReady(attempt = 0) {
     const container = document.getElementById('zapiet-widget-root');
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
-    if (container.getAttribute('data-zapiet-initialized') === 'true') return;
+    if (container.getAttribute('data-zapiet-initialized') === 'true') {
+      return;
+    }
 
     if (window.ZapietWidget) {
       try {
@@ -211,19 +241,24 @@
         widgetInstance.init();
         container.setAttribute('data-zapiet-initialized', 'true');
       } catch (e) {
+        console.error('[Zapiet Init] Error creating widget instance:', e);
       }
       return;
     }
 
     if (attempt < 20) {
       setTimeout(() => initWidgetWhenReady(attempt + 1), 200);
+    } else {
+      console.error('[Zapiet Init] ZapietWidget class not available after 20 attempts');
     }
   }
 
   function findInjectionPoint(selectors) {
     for (const selector of selectors) {
       const element = document.querySelector(selector);
-      if (element) return element;
+      if (element) {
+        return element;
+      }
     }
     return null;
   }
@@ -271,30 +306,93 @@
     const cartDrawer = document.querySelector('cart-drawer') || 
                       document.querySelector('.cart-drawer') ||
                       document.querySelector('[id*="cart-drawer"]') ||
-                      document.querySelector('aside[id*="cart"]');
+                      document.querySelector('aside[id*="cart"]') ||
+                      document.querySelector('dialog[id*="cart"]');
+    
+    const isDrawerOpen = cartDrawer && (
+      cartDrawer.hasAttribute('open') || 
+      cartDrawer.classList.contains('active') ||
+      cartDrawer.classList.contains('is-open') ||
+      cartDrawer.getAttribute('aria-hidden') === 'false'
+    );
     
     let injectionPoint = null;
+    let targetContext = 'unknown';
 
-    if (forceDrawer || cartDrawer) {
+    if ((forceDrawer || isDrawerOpen) && cartDrawer) {
       injectionPoint = findInjectionPoint(cartDrawerSelectors);
+      targetContext = 'drawer';
     }
     
     if (!injectionPoint && isCartPage) {
       injectionPoint = findInjectionPoint(cartPageSelectors);
+      targetContext = 'page';
+      
+      if (!injectionPoint) {
+        const checkoutButton = document.querySelector('[name="checkout"], button[type="submit"], .cart__checkout, [class*="checkout"]');
+        
+        if (checkoutButton && checkoutButton.parentElement) {
+          injectionPoint = checkoutButton.parentElement;
+          targetContext = 'before-checkout';
+        }
+      }
+      
       if (!injectionPoint) {
         const cartForm = document.querySelector('form[action="/cart"]');
-        if (cartForm) injectionPoint = cartForm;
+        if (cartForm) {
+          const summary = cartForm.querySelector('.cart__footer, .cart-footer, [class*="summary"]');
+          injectionPoint = summary || cartForm;
+        }
+      }
+      
+      if (!injectionPoint) {
+        const mainContent = document.querySelector('main, #MainContent, [role="main"]');
+        if (mainContent) {
+          const cartContainer = mainContent.querySelector('[class*="cart"]');
+          if (cartContainer) {
+            injectionPoint = cartContainer;
+          }
+        }
+      }
+      
+      if (!injectionPoint) {
+        injectionPoint = document.body;
+        targetContext = 'fallback';
       }
     }
 
     if (injectionPoint) {
       const widget = createWidgetContainer();
+      widget.setAttribute('data-context', targetContext);
       
-      if (injectionPoint.firstChild) {
-        injectionPoint.insertBefore(widget, injectionPoint.firstChild);
+      if (targetContext === 'before-checkout') {
+        const checkoutButton = injectionPoint.querySelector('[name="checkout"], button[type="submit"], .cart__checkout, [class*="checkout"]');
+        if (checkoutButton) {
+          injectionPoint.insertBefore(widget, checkoutButton);
+        } else {
+          injectionPoint.appendChild(widget);
+        }
+      } else if (targetContext === 'drawer' || injectionPoint.classList.contains('cart-drawer__footer') || injectionPoint.closest('cart-drawer, .cart-drawer, [id*="drawer"]')) {
+        if (injectionPoint.firstChild) {
+          injectionPoint.insertBefore(widget, injectionPoint.firstChild);
+        } else {
+          injectionPoint.appendChild(widget);
+        }
       } else {
-        injectionPoint.appendChild(widget);
+        if (injectionPoint.classList.contains('cart__footer') || 
+            injectionPoint.classList.contains('cart-footer') ||
+            injectionPoint.querySelector('.cart__footer, .cart-footer')) {
+          if (injectionPoint.firstChild) {
+            injectionPoint.insertBefore(widget, injectionPoint.firstChild);
+          } else {
+            injectionPoint.appendChild(widget);
+          }
+        } else {
+          injectionPoint.appendChild(widget);
+        }
       }
+      
+      injectHiddenInputsIntoCartForm();
       
       window.zapietInjecting = false;
       setTimeout(() => {
@@ -371,22 +469,23 @@
     }
   });
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      injectWidget();
-      watchCartDrawer();
-    });
-  } else {
+  function startInjection() {
     injectWidget();
     watchCartDrawer();
+    
+    setTimeout(() => {
+      if (!window.zapietWidgetInjected || !document.getElementById('zapiet-widget-root')) {
+        injectWidget(false);
+      }
+      setTimeout(() => cleanupDuplicateWidgets(), 1000);
+    }, 2000);
   }
 
-  setTimeout(() => {
-    if (!window.zapietWidgetInjected) {
-      injectWidget(true);
-    }
-    setTimeout(() => cleanupDuplicateWidgets(), 1000);
-  }, 1000);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startInjection);
+  } else {
+    startInjection();
+  }
 
 })();
 </script>
@@ -398,6 +497,43 @@
     padding: 20px;
     padding-bottom: 24px;
     background: #fff;
+    position: relative;
+    z-index: 30;
+    isolation: isolate;
+    pointer-events: auto;
+  }
+
+  #zapiet-widget-root,
+  #zapiet-widget-root * {
+    pointer-events: auto !important;
+  }
+  
+  #zapiet-widget-root[data-context="page"] {
+    max-height: none;
+    overflow-y: visible;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  #zapiet-widget-root[data-context="drawer"] {
+    border-top: 1px solid #e5e7eb;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  @media (max-width: 749px) {
+    #zapiet-widget-root {
+      padding: 16px;
+      max-height: 50vh;
+    }
+    
+    #zapiet-widget-root[data-context="page"] {
+      padding: 16px;
+      margin: 16px 0;
+    }
   }
 
   .zapiet-method-selector {
@@ -419,6 +555,8 @@
     cursor: pointer;
     transition: all 0.2s;
     min-height: 100px;
+    position: relative;
+    z-index: 1;
   }
   
   .zapiet-method-card:hover {
@@ -708,7 +846,7 @@
 </style>
 
 <link rel="stylesheet" href="{{ 'widget.css' | asset_url }}">
-<script src="{{ 'widget.js' | asset_url }}"></script>
+<script src="{{ 'widget.js' | asset_url }}" defer></script>
 
 {% schema %}
 {

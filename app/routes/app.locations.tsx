@@ -59,6 +59,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const businessHours = formData.get("businessHours") as string;
       const pickupActivationConditions = formData.get("pickupActivationConditions") as string;
       const deliveryActivationConditions = formData.get("deliveryActivationConditions") as string;
+      
+      const pickupDays = formData.get("pickupDays") as string;
+      const deliveryDays = formData.get("deliveryDays") as string;
+      const pickupTimeSlots = formData.get("pickupTimeSlots") as string;
+      const deliveryTimeSlots = formData.get("deliveryTimeSlots") as string;
+      const pickupPreparationDays = parseInt(formData.get("pickupPreparationDays") as string) || 0;
+      const deliveryPreparationDays = parseInt(formData.get("deliveryPreparationDays") as string) || 0;
+      const pickupOrderLimitPerDay = formData.get("pickupOrderLimitPerDay") as string;
+      const deliveryOrderLimitPerDay = formData.get("deliveryOrderLimitPerDay") as string;
+      const pickupOrderLimitPerSlot = formData.get("pickupOrderLimitPerSlot") as string;
+      const deliveryOrderLimitPerSlot = formData.get("deliveryOrderLimitPerSlot") as string;
+      const pickupMaxDaysInAdvance = parseInt(formData.get("pickupMaxDaysInAdvance") as string) || 30;
+      const deliveryMaxDaysInAdvance = parseInt(formData.get("deliveryMaxDaysInAdvance") as string) || 30;
+      const pickupBlackoutDates = formData.get("pickupBlackoutDates") as string;
+      const deliveryBlackoutDates = formData.get("deliveryBlackoutDates") as string;
+      const pickupTags = formData.get("pickupTags") as string;
+      const deliveryTags = formData.get("deliveryTags") as string;
+      const notificationEmails = formData.get("notificationEmails") as string;
+      const notificationPhones = formData.get("notificationPhones") as string;
+      const allowedProducts = formData.get("allowedProducts") as string;
 
       if (!name) {
         return json({ error: "Name is required" }, { status: 400 });
@@ -76,6 +96,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         businessHours: businessHours || "{}",
         pickupActivationConditions: pickupActivationConditions || "{}",
         deliveryActivationConditions: deliveryActivationConditions || "{}",
+        pickupDays: pickupDays || "[]",
+        deliveryDays: deliveryDays || "[]",
+        pickupTimeSlots: pickupTimeSlots || "[]",
+        deliveryTimeSlots: deliveryTimeSlots || "[]",
+        pickupPreparationDays,
+        deliveryPreparationDays,
+        pickupOrderLimitPerDay: pickupOrderLimitPerDay ? parseInt(pickupOrderLimitPerDay) : null,
+        deliveryOrderLimitPerDay: deliveryOrderLimitPerDay ? parseInt(deliveryOrderLimitPerDay) : null,
+        pickupOrderLimitPerSlot: pickupOrderLimitPerSlot ? parseInt(pickupOrderLimitPerSlot) : null,
+        deliveryOrderLimitPerSlot: deliveryOrderLimitPerSlot ? parseInt(deliveryOrderLimitPerSlot) : null,
+        pickupMaxDaysInAdvance,
+        deliveryMaxDaysInAdvance,
+        pickupBlackoutDates: pickupBlackoutDates || "[]",
+        deliveryBlackoutDates: deliveryBlackoutDates || "[]",
+        pickupTags: pickupTags || "",
+        deliveryTags: deliveryTags || "",
+        notificationEmails: notificationEmails || "",
+        notificationPhones: notificationPhones || "",
+        allowedProducts: allowedProducts || "all",
       };
 
       if (action === "create") {
@@ -154,6 +193,26 @@ export default function LocationsPage() {
   const [deliveryMinWeight, setDeliveryMinWeight] = useState("");
   const [deliveryMaxWeight, setDeliveryMaxWeight] = useState("");
   const [deliveryZones, setDeliveryZones] = useState("");
+  
+  const [pickupDays, setPickupDays] = useState<string[]>([]);
+  const [deliveryDays, setDeliveryDays] = useState<string[]>([]);
+  const [pickupTimeSlots, setPickupTimeSlots] = useState("");
+  const [deliveryTimeSlots, setDeliveryTimeSlots] = useState("");
+  const [pickupPreparationDays, setPickupPreparationDays] = useState("0");
+  const [deliveryPreparationDays, setDeliveryPreparationDays] = useState("0");
+  const [pickupOrderLimitPerDay, setPickupOrderLimitPerDay] = useState("");
+  const [deliveryOrderLimitPerDay, setDeliveryOrderLimitPerDay] = useState("");
+  const [pickupOrderLimitPerSlot, setPickupOrderLimitPerSlot] = useState("");
+  const [deliveryOrderLimitPerSlot, setDeliveryOrderLimitPerSlot] = useState("");
+  const [pickupMaxDaysInAdvance, setPickupMaxDaysInAdvance] = useState("30");
+  const [deliveryMaxDaysInAdvance, setDeliveryMaxDaysInAdvance] = useState("30");
+  const [pickupBlackoutDates, setPickupBlackoutDates] = useState("");
+  const [deliveryBlackoutDates, setDeliveryBlackoutDates] = useState("");
+  const [pickupTags, setPickupTags] = useState("");
+  const [deliveryTags, setDeliveryTags] = useState("");
+  const [notificationEmails, setNotificationEmails] = useState("");
+  const [notificationPhones, setNotificationPhones] = useState("");
+  const [allowedProducts, setAllowedProducts] = useState("all");
 
   const parseConditions = (raw?: string | null): ActivationConditions => {
     if (!raw) return {};
@@ -231,6 +290,31 @@ export default function LocationsPage() {
       setDeliveryMinWeight(toNumberString(deliveryConditions.minWeight));
       setDeliveryMaxWeight(toNumberString(deliveryConditions.maxWeight));
       setDeliveryZones((deliveryConditions.deliveryZones || []).join(", "));
+      
+      const parseArray = (str: string | null | undefined): any[] => {
+        if (!str) return [];
+        try { return JSON.parse(str); } catch { return []; }
+      };
+      
+      setPickupDays(parseArray(location.pickupDays));
+      setDeliveryDays(parseArray(location.deliveryDays));
+      setPickupTimeSlots(parseArray(location.pickupTimeSlots).join("\n"));
+      setDeliveryTimeSlots(parseArray(location.deliveryTimeSlots).join("\n"));
+      setPickupPreparationDays(String(location.pickupPreparationDays || 0));
+      setDeliveryPreparationDays(String(location.deliveryPreparationDays || 0));
+      setPickupOrderLimitPerDay(location.pickupOrderLimitPerDay ? String(location.pickupOrderLimitPerDay) : "");
+      setDeliveryOrderLimitPerDay(location.deliveryOrderLimitPerDay ? String(location.deliveryOrderLimitPerDay) : "");
+      setPickupOrderLimitPerSlot(location.pickupOrderLimitPerSlot ? String(location.pickupOrderLimitPerSlot) : "");
+      setDeliveryOrderLimitPerSlot(location.deliveryOrderLimitPerSlot ? String(location.deliveryOrderLimitPerSlot) : "");
+      setPickupMaxDaysInAdvance(String(location.pickupMaxDaysInAdvance || 30));
+      setDeliveryMaxDaysInAdvance(String(location.deliveryMaxDaysInAdvance || 30));
+      setPickupBlackoutDates(parseArray(location.pickupBlackoutDates).join(", "));
+      setDeliveryBlackoutDates(parseArray(location.deliveryBlackoutDates).join(", "));
+      setPickupTags(location.pickupTags || "");
+      setDeliveryTags(location.deliveryTags || "");
+      setNotificationEmails(location.notificationEmails || "");
+      setNotificationPhones(location.notificationPhones || "");
+      setAllowedProducts(location.allowedProducts || "all");
     } else {
       // Create mode
       setEditingLocation(null);
@@ -251,6 +335,26 @@ export default function LocationsPage() {
       setDeliveryMinWeight("");
       setDeliveryMaxWeight("");
       setDeliveryZones("");
+      
+      setPickupDays([]);
+      setDeliveryDays([]);
+      setPickupTimeSlots("");
+      setDeliveryTimeSlots("");
+      setPickupPreparationDays("0");
+      setDeliveryPreparationDays("0");
+      setPickupOrderLimitPerDay("");
+      setDeliveryOrderLimitPerDay("");
+      setPickupOrderLimitPerSlot("");
+      setDeliveryOrderLimitPerSlot("");
+      setPickupMaxDaysInAdvance("30");
+      setDeliveryMaxDaysInAdvance("30");
+      setPickupBlackoutDates("");
+      setDeliveryBlackoutDates("");
+      setPickupTags("");
+      setDeliveryTags("");
+      setNotificationEmails("");
+      setNotificationPhones("");
+      setAllowedProducts("all");
     }
     setModalActive(true);
   };
@@ -293,6 +397,26 @@ export default function LocationsPage() {
         zones: deliveryZones,
       })
     );
+    
+    formData.append("pickupDays", JSON.stringify(pickupDays));
+    formData.append("deliveryDays", JSON.stringify(deliveryDays));
+    formData.append("pickupTimeSlots", JSON.stringify(pickupTimeSlots.split("\n").filter(Boolean)));
+    formData.append("deliveryTimeSlots", JSON.stringify(deliveryTimeSlots.split("\n").filter(Boolean)));
+    formData.append("pickupPreparationDays", pickupPreparationDays);
+    formData.append("deliveryPreparationDays", deliveryPreparationDays);
+    formData.append("pickupOrderLimitPerDay", pickupOrderLimitPerDay);
+    formData.append("deliveryOrderLimitPerDay", deliveryOrderLimitPerDay);
+    formData.append("pickupOrderLimitPerSlot", pickupOrderLimitPerSlot);
+    formData.append("deliveryOrderLimitPerSlot", deliveryOrderLimitPerSlot);
+    formData.append("pickupMaxDaysInAdvance", pickupMaxDaysInAdvance);
+    formData.append("deliveryMaxDaysInAdvance", deliveryMaxDaysInAdvance);
+    formData.append("pickupBlackoutDates", JSON.stringify(pickupBlackoutDates.split(",").map(d => d.trim()).filter(Boolean)));
+    formData.append("deliveryBlackoutDates", JSON.stringify(deliveryBlackoutDates.split(",").map(d => d.trim()).filter(Boolean)));
+    formData.append("pickupTags", pickupTags);
+    formData.append("deliveryTags", deliveryTags);
+    formData.append("notificationEmails", notificationEmails);
+    formData.append("notificationPhones", notificationPhones);
+    formData.append("allowedProducts", allowedProducts);
 
     fetcher.submit(formData, { method: "post" });
     handleCloseModal();
@@ -761,6 +885,182 @@ export default function LocationsPage() {
                   </Text>
                 </BlockStack>
               )}
+            </BlockStack>
+
+            <BlockStack gap="200">
+              <Text as="h3" variant="headingSm">Pickup Availability</Text>
+              <ChoiceList
+                title="Select pickup days"
+                titleHidden
+                allowMultiple
+                choices={[
+                  { label: "Monday", value: "monday" },
+                  { label: "Tuesday", value: "tuesday" },
+                  { label: "Wednesday", value: "wednesday" },
+                  { label: "Thursday", value: "thursday" },
+                  { label: "Friday", value: "friday" },
+                  { label: "Saturday", value: "saturday" },
+                  { label: "Sunday", value: "sunday" },
+                ]}
+                selected={pickupDays}
+                onChange={setPickupDays}
+              />
+              <TextField
+                label="Pickup Time Slots (one per line)"
+                value={pickupTimeSlots}
+                onChange={setPickupTimeSlots}
+                multiline={4}
+                autoComplete="off"
+                helpText="e.g., 9:00 AM - 12:00 PM"
+                placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 5:00 PM"
+              />
+              <InlineStack gap="300">
+                <TextField
+                  label="Preparation Days"
+                  type="number"
+                  value={pickupPreparationDays}
+                  onChange={setPickupPreparationDays}
+                  autoComplete="off"
+                  helpText="Days notice required"
+                />
+                <TextField
+                  label="Max Days in Advance"
+                  type="number"
+                  value={pickupMaxDaysInAdvance}
+                  onChange={setPickupMaxDaysInAdvance}
+                  autoComplete="off"
+                />
+              </InlineStack>
+              <InlineStack gap="300">
+                <TextField
+                  label="Order Limit per Day"
+                  type="number"
+                  value={pickupOrderLimitPerDay}
+                  onChange={setPickupOrderLimitPerDay}
+                  autoComplete="off"
+                />
+                <TextField
+                  label="Order Limit per Slot"
+                  type="number"
+                  value={pickupOrderLimitPerSlot}
+                  onChange={setPickupOrderLimitPerSlot}
+                  autoComplete="off"
+                />
+              </InlineStack>
+              <TextField
+                label="Blackout Dates (comma-separated)"
+                value={pickupBlackoutDates}
+                onChange={setPickupBlackoutDates}
+                autoComplete="off"
+                helpText="e.g., 2026-12-25, 2026-01-01"
+                placeholder="2026-12-25, 2026-01-01"
+              />
+              <TextField
+                label="Pickup Tags"
+                value={pickupTags}
+                onChange={setPickupTags}
+                autoComplete="off"
+                helpText="Comma-separated tags for pickup orders from this location"
+                placeholder="Store Pickup, Click & Collect"
+              />
+            </BlockStack>
+
+            <BlockStack gap="200">
+              <Text as="h3" variant="headingSm">Delivery Availability</Text>
+              <ChoiceList
+                title="Select delivery days"
+                titleHidden
+                allowMultiple
+                choices={[
+                  { label: "Monday", value: "monday" },
+                  { label: "Tuesday", value: "tuesday" },
+                  { label: "Wednesday", value: "wednesday" },
+                  { label: "Thursday", value: "thursday" },
+                  { label: "Friday", value: "friday" },
+                  { label: "Saturday", value: "saturday" },
+                  { label: "Sunday", value: "sunday" },
+                ]}
+                selected={deliveryDays}
+                onChange={setDeliveryDays}
+              />
+              <TextField
+                label="Delivery Time Slots (one per line)"
+                value={deliveryTimeSlots}
+                onChange={setDeliveryTimeSlots}
+                multiline={4}
+                autoComplete="off"
+                helpText="e.g., 9:00 AM - 6:00 PM"
+                placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 6:00 PM"
+              />
+              <InlineStack gap="300">
+                <TextField
+                  label="Preparation Days"
+                  type="number"
+                  value={deliveryPreparationDays}
+                  onChange={setDeliveryPreparationDays}
+                  autoComplete="off"
+                  helpText="Days notice required"
+                />
+                <TextField
+                  label="Max Days in Advance"
+                  type="number"
+                  value={deliveryMaxDaysInAdvance}
+                  onChange={setDeliveryMaxDaysInAdvance}
+                  autoComplete="off"
+                />
+              </InlineStack>
+              <InlineStack gap="300">
+                <TextField
+                  label="Order Limit per Day"
+                  type="number"
+                  value={deliveryOrderLimitPerDay}
+                  onChange={setDeliveryOrderLimitPerDay}
+                  autoComplete="off"
+                />
+                <TextField
+                  label="Order Limit per Slot"
+                  type="number"
+                  value={deliveryOrderLimitPerSlot}
+                  onChange={setDeliveryOrderLimitPerSlot}
+                  autoComplete="off"
+                />
+              </InlineStack>
+              <TextField
+                label="Blackout Dates (comma-separated)"
+                value={deliveryBlackoutDates}
+                onChange={setDeliveryBlackoutDates}
+                autoComplete="off"
+                helpText="e.g., 2026-12-25, 2026-01-01"
+                placeholder="2026-12-25, 2026-01-01"
+              />
+              <TextField
+                label="Delivery Tags"
+                value={deliveryTags}
+                onChange={setDeliveryTags}
+                autoComplete="off"
+                helpText="Comma-separated tags for delivery orders from this location"
+                placeholder="Local Delivery"
+              />
+            </BlockStack>
+
+            <BlockStack gap="200">
+              <Text as="h3" variant="headingSm">Notifications</Text>
+              <TextField
+                label="Notification Emails"
+                value={notificationEmails}
+                onChange={setNotificationEmails}
+                autoComplete="off"
+                helpText="Comma-separated emails for order notifications"
+                placeholder="pickup@store.com, manager@store.com"
+              />
+              <TextField
+                label="Notification Phones"
+                value={notificationPhones}
+                onChange={setNotificationPhones}
+                autoComplete="off"
+                helpText="Comma-separated phone numbers"
+                placeholder="+12345678910, +10987654321"
+              />
             </BlockStack>
 
             {editingLocation && (

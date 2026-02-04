@@ -60,6 +60,15 @@ npx prisma generate      # Regenerate Prisma client
 npx prisma db push       # Sync database schema
 ```
 
+## Storefront Widget Notes
+
+- The widget is injected by the app embed in `extensions/zapiet-widget/blocks/app-embed.liquid`.
+- UI behavior and event handling live in `widget-src/widget.ts` and compile to `extensions/zapiet-widget/assets/widget.js`.
+- Rebuild the widget after any `widget-src/` changes:
+  ```bash
+  npm run widget:build
+  ```
+
 ## Project Structure
 
 ```
