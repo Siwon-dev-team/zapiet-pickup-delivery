@@ -1,13 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "sqlite"
   url      = "file:dev.sqlite"
@@ -34,83 +28,78 @@ model Session {
 }
 
 model Location {
-  id              String   @id @default(uuid())
-  shop            String
-  name            String
-  address         String
-  city            String?
-  zip             String?
-  country         String?
-  isPickup        Boolean  @default(false)
-  isDelivery      Boolean  @default(false)
-  businessHours   String   @default("{}") 
+  id                           String   @id @default(uuid())
+  shop                         String
+  name                         String
+  address                      String
+  city                         String?
+  zip                          String?
+  country                      String?
+  isPickup                     Boolean  @default(false)
+  isDelivery                   Boolean  @default(false)
+  businessHours                String   @default("{}")
   pickupActivationConditions   String   @default("{}")
   deliveryActivationConditions String   @default("{}")
-  
-  pickupDays              String   @default("[]")
-  deliveryDays            String   @default("[]")
-  pickupTimeSlots         String   @default("[]")
-  deliveryTimeSlots       String   @default("[]")
-  pickupPreparationDays   Int      @default(0)
-  deliveryPreparationDays Int      @default(0)
-  pickupOrderLimitPerDay  Int?
-  deliveryOrderLimitPerDay Int?
-  pickupOrderLimitPerSlot Int?
-  deliveryOrderLimitPerSlot Int?
-  pickupMaxDaysInAdvance  Int      @default(30)
-  deliveryMaxDaysInAdvance Int     @default(30)
-  pickupBlackoutDates     String   @default("[]")
-  deliveryBlackoutDates   String   @default("[]")
-  pickupTags              String   @default("")
-  deliveryTags            String   @default("")
-  deliveryNextWeekOnly    Boolean  @default(false)
-  deliveryNextWeekSameWeekDays String @default("[]")
-  notificationEmails      String   @default("")
-  notificationPhones      String   @default("")
-  allowedProducts         String   @default("all")
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  rates           Rate[]
+  pickupDays                   String   @default("[]")
+  deliveryDays                 String   @default("[]")
+  pickupTimeSlots              String   @default("[]")
+  deliveryTimeSlots            String   @default("[]")
+  pickupPreparationDays        Int      @default(0)
+  deliveryPreparationDays      Int      @default(0)
+  pickupOrderLimitPerDay       Int?
+  deliveryOrderLimitPerDay     Int?
+  pickupOrderLimitPerSlot      Int?
+  deliveryOrderLimitPerSlot    Int?
+  pickupMaxDaysInAdvance       Int      @default(30)
+  deliveryMaxDaysInAdvance     Int      @default(30)
+  pickupBlackoutDates          String   @default("[]")
+  deliveryBlackoutDates        String   @default("[]")
+  pickupTags                   String   @default("")
+  deliveryTags                 String   @default("")
+  notificationEmails           String   @default("")
+  notificationPhones           String   @default("")
+  allowedProducts              String   @default("all")
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  deliveryNextWeekOnly         Boolean  @default(false)
+  deliveryNextWeekSameWeekDays String   @default("[]")
+  pickupTimeSlotsPerDay        String?  @default("{}")
+  deliveryTimeSlotsPerDay      String?  @default("{}")
+  rates                        Rate[]
 }
 
 model Rate {
-  id          String   @id @default(uuid())
-  locationId  String
-  name        String
-  type        String   // "PRICE" or "WEIGHT"
-  min         Float    // Min price or weight condition
-  max         Float?   // Max price or weight (optional)
-  price       Float    // Cost of shipping
-  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  locationId String
+  name       String
+  type       String
+  min        Float
+  max        Float?
+  price      Float
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 }
 
 model Settings {
-  id                            String  @id @default(uuid())
-  shop                          String  @unique
-  enablePickup                  Boolean @default(true)
-  enableDelivery                Boolean @default(false)
-  pickupTitle                   String  @default("Store Pickup")
-  deliveryTitle                 String  @default("Local Delivery")
-  // Appearance
-  primaryColor                  String  @default("#008060")
-  logoUrl                       String  @default("")
-  // Activation Conditions (JSON strings)
-  pickupActivationConditions    String  @default("{}")
-  deliveryActivationConditions  String  @default("{}")
-  // Auto-tagging
-  autoTagPickup                 String  @default("")
-  autoTagDelivery               String  @default("")
-  // Security & Validation
-  enableSecurityCode            Boolean @default(true)
-  postalCodeValidation          String  @default("none")
-  // Additional Settings
-  enablePickupNote              Boolean @default(false)
-  enableDeliveryNote            Boolean @default(false)
-  preselectLocation             String  @default("")
-  locationSortOrder             String  @default("newest")
-  fallbackRate                  Float   @default(0)
-  deliveryTimeSlots             String  @default("9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM")
-  enableDeliveryNextWeekOnly    Boolean @default(false)
-  deliveryNextWeekSameWeekDays  String  @default("[]")
+  id                           String  @id @default(uuid())
+  shop                         String  @unique
+  enablePickup                 Boolean @default(true)
+  enableDelivery               Boolean @default(false)
+  pickupTitle                  String  @default("Store Pickup")
+  deliveryTitle                String  @default("Local Delivery")
+  primaryColor                 String  @default("#008060")
+  logoUrl                      String  @default("")
+  pickupActivationConditions   String  @default("{}")
+  deliveryActivationConditions String  @default("{}")
+  autoTagPickup                String  @default("")
+  autoTagDelivery              String  @default("")
+  enableSecurityCode           Boolean @default(true)
+  postalCodeValidation         String  @default("none")
+  enablePickupNote             Boolean @default(false)
+  enableDeliveryNote           Boolean @default(false)
+  preselectLocation            String  @default("")
+  locationSortOrder            String  @default("newest")
+  fallbackRate                 Float   @default(0)
+  deliveryTimeSlots            String  @default("9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM")
+  enableDeliveryNextWeekOnly   Boolean @default(false)
+  deliveryNextWeekSameWeekDays String  @default("[]")
 }

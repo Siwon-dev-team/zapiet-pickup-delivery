@@ -16,6 +16,8 @@ import {
   Banner,
   Filters,
   ChoiceList,
+  Tabs,
+  Divider,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -64,6 +66,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const deliveryDays = formData.get("deliveryDays") as string;
       const pickupTimeSlots = formData.get("pickupTimeSlots") as string;
       const deliveryTimeSlots = formData.get("deliveryTimeSlots") as string;
+      const pickupTimeSlotsPerDay = formData.get("pickupTimeSlotsPerDay") as string;
+      const deliveryTimeSlotsPerDay = formData.get("deliveryTimeSlotsPerDay") as string;
       const pickupPreparationDays = parseInt(formData.get("pickupPreparationDays") as string) || 0;
       const deliveryPreparationDays = parseInt(formData.get("deliveryPreparationDays") as string) || 0;
       const pickupOrderLimitPerDay = formData.get("pickupOrderLimitPerDay") as string;
@@ -102,6 +106,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         deliveryDays: deliveryDays || "[]",
         pickupTimeSlots: pickupTimeSlots || "[]",
         deliveryTimeSlots: deliveryTimeSlots || "[]",
+        pickupTimeSlotsPerDay: pickupTimeSlotsPerDay || "{}",
+        deliveryTimeSlotsPerDay: deliveryTimeSlotsPerDay || "{}",
         pickupPreparationDays,
         deliveryPreparationDays,
         pickupOrderLimitPerDay: pickupOrderLimitPerDay ? parseInt(pickupOrderLimitPerDay) : null,
@@ -202,6 +208,10 @@ export default function LocationsPage() {
   const [deliveryDays, setDeliveryDays] = useState<string[]>([]);
   const [pickupTimeSlots, setPickupTimeSlots] = useState("");
   const [deliveryTimeSlots, setDeliveryTimeSlots] = useState("");
+  const [pickupTimeSlotsPerDay, setPickupTimeSlotsPerDay] = useState<Record<string, string[]>>({});
+  const [deliveryTimeSlotsPerDay, setDeliveryTimeSlotsPerDay] = useState<Record<string, string[]>>({});
+  const [pickupSelectedDay, setPickupSelectedDay] = useState(0);
+  const [deliverySelectedDay, setDeliverySelectedDay] = useState(0);
   const [pickupPreparationDays, setPickupPreparationDays] = useState("0");
   const [deliveryPreparationDays, setDeliveryPreparationDays] = useState("0");
   const [pickupOrderLimitPerDay, setPickupOrderLimitPerDay] = useState("");
@@ -306,6 +316,21 @@ export default function LocationsPage() {
       setDeliveryDays(parseArray(location.deliveryDays));
       setPickupTimeSlots(parseArray(location.pickupTimeSlots).join("\n"));
       setDeliveryTimeSlots(parseArray(location.deliveryTimeSlots).join("\n"));
+      
+      // Parse per-day time slots
+      try {
+        const pickupPerDay = JSON.parse(location.pickupTimeSlotsPerDay || "{}");
+        setPickupTimeSlotsPerDay(pickupPerDay);
+      } catch {
+        setPickupTimeSlotsPerDay({});
+      }
+      try {
+        const deliveryPerDay = JSON.parse(location.deliveryTimeSlotsPerDay || "{}");
+        setDeliveryTimeSlotsPerDay(deliveryPerDay);
+      } catch {
+        setDeliveryTimeSlotsPerDay({});
+      }
+      
       setPickupPreparationDays(String(location.pickupPreparationDays || 0));
       setDeliveryPreparationDays(String(location.deliveryPreparationDays || 0));
       setPickupOrderLimitPerDay(location.pickupOrderLimitPerDay ? String(location.pickupOrderLimitPerDay) : "");
@@ -410,6 +435,8 @@ export default function LocationsPage() {
     formData.append("deliveryDays", JSON.stringify(deliveryDays));
     formData.append("pickupTimeSlots", JSON.stringify(pickupTimeSlots.split("\n").filter(Boolean)));
     formData.append("deliveryTimeSlots", JSON.stringify(deliveryTimeSlots.split("\n").filter(Boolean)));
+    formData.append("pickupTimeSlotsPerDay", JSON.stringify(pickupTimeSlotsPerDay));
+    formData.append("deliveryTimeSlotsPerDay", JSON.stringify(deliveryTimeSlotsPerDay));
     formData.append("pickupPreparationDays", pickupPreparationDays);
     formData.append("deliveryPreparationDays", deliveryPreparationDays);
     formData.append("pickupOrderLimitPerDay", pickupOrderLimitPerDay);
@@ -924,6 +951,48 @@ export default function LocationsPage() {
                 helpText="e.g., 9:00 AM - 12:00 PM"
                 placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 5:00 PM"
               />
+              
+              <Divider />
+              <Text as="p" variant="bodyMd" fontWeight="semibold">Or set different time slots for each day:</Text>
+              <Tabs
+                tabs={[
+                  { id: 'monday', content: 'Mon' },
+                  { id: 'tuesday', content: 'Tue' },
+                  { id: 'wednesday', content: 'Wed' },
+                  { id: 'thursday', content: 'Thu' },
+                  { id: 'friday', content: 'Fri' },
+                  { id: 'saturday', content: 'Sat' },
+                  { id: 'sunday', content: 'Sun' },
+                ]}
+                selected={pickupSelectedDay}
+                onSelect={setPickupSelectedDay}
+              >
+                <Card>
+                  <BlockStack gap="200">
+                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day, index) => (
+                      pickupSelectedDay === index && (
+                        <TextField
+                          key={day}
+                          label={`${day.charAt(0).toUpperCase() + day.slice(1)} Time Slots (one per line)`}
+                          value={(pickupTimeSlotsPerDay[day] || []).join('\n')}
+                          onChange={(value) => {
+                            const newSlots = value.split('\n').filter(Boolean);
+                            setPickupTimeSlotsPerDay({
+                              ...pickupTimeSlotsPerDay,
+                              [day]: newSlots
+                            });
+                          }}
+                          multiline={4}
+                          autoComplete="off"
+                          placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 5:00 PM"
+                        />
+                      )
+                    ))}
+                  </BlockStack>
+                </Card>
+              </Tabs>
+              <Divider />
+              
               <InlineStack gap="300">
                 <TextField
                   label="Preparation Days"
@@ -1002,6 +1071,48 @@ export default function LocationsPage() {
                 helpText="e.g., 9:00 AM - 6:00 PM"
                 placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 6:00 PM"
               />
+              
+              <Divider />
+              <Text as="p" variant="bodyMd" fontWeight="semibold">Or set different time slots for each day:</Text>
+              <Tabs
+                tabs={[
+                  { id: 'monday', content: 'Mon' },
+                  { id: 'tuesday', content: 'Tue' },
+                  { id: 'wednesday', content: 'Wed' },
+                  { id: 'thursday', content: 'Thu' },
+                  { id: 'friday', content: 'Fri' },
+                  { id: 'saturday', content: 'Sat' },
+                  { id: 'sunday', content: 'Sun' },
+                ]}
+                selected={deliverySelectedDay}
+                onSelect={setDeliverySelectedDay}
+              >
+                <Card>
+                  <BlockStack gap="200">
+                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day, index) => (
+                      deliverySelectedDay === index && (
+                        <TextField
+                          key={day}
+                          label={`${day.charAt(0).toUpperCase() + day.slice(1)} Time Slots (one per line)`}
+                          value={(deliveryTimeSlotsPerDay[day] || []).join('\n')}
+                          onChange={(value) => {
+                            const newSlots = value.split('\n').filter(Boolean);
+                            setDeliveryTimeSlotsPerDay({
+                              ...deliveryTimeSlotsPerDay,
+                              [day]: newSlots
+                            });
+                          }}
+                          multiline={4}
+                          autoComplete="off"
+                          placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 6:00 PM"
+                        />
+                      )
+                    ))}
+                  </BlockStack>
+                </Card>
+              </Tabs>
+              <Divider />
+              
               <InlineStack gap="300">
                 <TextField
                   label="Preparation Days"
