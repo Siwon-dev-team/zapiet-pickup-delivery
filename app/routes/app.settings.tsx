@@ -280,6 +280,13 @@ export default function SettingsPage() {
                 <Divider />
                 
                 <Text as="h3" variant="headingSm">Delivery Next Week Only</Text>
+                
+                {enableDeliveryNextWeekOnly && (
+                  <Banner tone="warning">
+                    <p><strong>Important:</strong> This setting will override other date-related restrictions (like blackout dates and max days in advance). The delivery date minimum will be enforced at 7+ days for non-exception days.</p>
+                  </Banner>
+                )}
+                
                 <Checkbox
                   label="Enable Delivery Next Week Only"
                   checked={enableDeliveryNextWeekOnly}
