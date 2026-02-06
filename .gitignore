@@ -5,21 +5,13 @@ node_modules/
 .vscode/
 .idea/
 
-# Database
 prisma/*.db
 prisma/*.db-journal
 dev.sqlite
 dev.sqlite-journal
 
-# Build
 dist/
 build/
 .cache/
 
-# Shopify
 .shopify/
-
-# Private documentation (not pushed to GitHub)
-IMPLEMENTATION_GUIDE_PRIVATE.md
-DEBUG_CART_PAGE_DRAWER.md
-*_PRIVATE.md
