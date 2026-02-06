@@ -76,6 +76,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const deliveryBlackoutDates = formData.get("deliveryBlackoutDates") as string;
       const pickupTags = formData.get("pickupTags") as string;
       const deliveryTags = formData.get("deliveryTags") as string;
+      const deliveryNextWeekOnly = formData.get("deliveryNextWeekOnly") === "true";
+      const deliveryNextWeekSameWeekDays = formData.get("deliveryNextWeekSameWeekDays") as string;
       const notificationEmails = formData.get("notificationEmails") as string;
       const notificationPhones = formData.get("notificationPhones") as string;
       const allowedProducts = formData.get("allowedProducts") as string;
@@ -112,6 +114,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         deliveryBlackoutDates: deliveryBlackoutDates || "[]",
         pickupTags: pickupTags || "",
         deliveryTags: deliveryTags || "",
+        deliveryNextWeekOnly,
+        deliveryNextWeekSameWeekDays: deliveryNextWeekSameWeekDays || "[]",
         notificationEmails: notificationEmails || "",
         notificationPhones: notificationPhones || "",
         allowedProducts: allowedProducts || "all",
@@ -210,6 +214,8 @@ export default function LocationsPage() {
   const [deliveryBlackoutDates, setDeliveryBlackoutDates] = useState("");
   const [pickupTags, setPickupTags] = useState("");
   const [deliveryTags, setDeliveryTags] = useState("");
+  const [deliveryNextWeekOnly, setDeliveryNextWeekOnly] = useState(false);
+  const [deliveryNextWeekSameWeekDays, setDeliveryNextWeekSameWeekDays] = useState("[]");
   const [notificationEmails, setNotificationEmails] = useState("");
   const [notificationPhones, setNotificationPhones] = useState("");
   const [allowedProducts, setAllowedProducts] = useState("all");
@@ -312,6 +318,8 @@ export default function LocationsPage() {
       setDeliveryBlackoutDates(parseArray(location.deliveryBlackoutDates).join(", "));
       setPickupTags(location.pickupTags || "");
       setDeliveryTags(location.deliveryTags || "");
+      setDeliveryNextWeekOnly(location.deliveryNextWeekOnly || false);
+      setDeliveryNextWeekSameWeekDays(location.deliveryNextWeekSameWeekDays || "[]");
       setNotificationEmails(location.notificationEmails || "");
       setNotificationPhones(location.notificationPhones || "");
       setAllowedProducts(location.allowedProducts || "all");
@@ -414,6 +422,8 @@ export default function LocationsPage() {
     formData.append("deliveryBlackoutDates", JSON.stringify(deliveryBlackoutDates.split(",").map(d => d.trim()).filter(Boolean)));
     formData.append("pickupTags", pickupTags);
     formData.append("deliveryTags", deliveryTags);
+    formData.append("deliveryNextWeekOnly", String(deliveryNextWeekOnly));
+    formData.append("deliveryNextWeekSameWeekDays", deliveryNextWeekSameWeekDays);
     formData.append("notificationEmails", notificationEmails);
     formData.append("notificationPhones", notificationPhones);
     formData.append("allowedProducts", allowedProducts);
