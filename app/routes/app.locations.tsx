@@ -1051,6 +1051,54 @@ export default function LocationsPage() {
                 helpText="Comma-separated tags for delivery orders from this location"
                 placeholder="Local Delivery"
               />
+              <Checkbox
+                label="Enable Delivery Next Week Only (Location Override)"
+                checked={deliveryNextWeekOnly}
+                onChange={setDeliveryNextWeekOnly}
+                helpText="Force deliveries from this location to next week only"
+              />
+              {deliveryNextWeekOnly && (
+                <>
+                  <Banner tone="info">
+                    <p>Select which days allow same-week delivery. All other days will require next week delivery.</p>
+                  </Banner>
+                  <BlockStack gap="200">
+                    <Text as="p" variant="bodyMd" fontWeight="semibold">Same-Week Delivery Days:</Text>
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                      const dayLower = day.toLowerCase();
+                      let selectedDays: string[] = [];
+                      try {
+                        selectedDays = JSON.parse(deliveryNextWeekSameWeekDays);
+                      } catch (e) {
+                        selectedDays = [];
+                      }
+                      const isChecked = selectedDays.includes(dayLower);
+                      
+                      return (
+                        <Checkbox
+                          key={day}
+                          label={day}
+                          checked={isChecked}
+                          onChange={(checked) => {
+                            const current = [...selectedDays];
+                            if (checked) {
+                              if (!current.includes(dayLower)) {
+                                current.push(dayLower);
+                              }
+                            } else {
+                              const index = current.indexOf(dayLower);
+                              if (index > -1) {
+                                current.splice(index, 1);
+                              }
+                            }
+                            setDeliveryNextWeekSameWeekDays(JSON.stringify(current));
+                          }}
+                        />
+                      );
+                    })}
+                  </BlockStack>
+                </>
+              )}
             </BlockStack>
 
             <BlockStack gap="200">
