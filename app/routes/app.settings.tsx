@@ -46,6 +46,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         locationSortOrder: "newest",
         fallbackRate: 0,
         deliveryTimeSlots: "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM",
+        enableDeliveryNextWeekOnly: false,
+        deliveryNextWeekSameWeekDays: "[]",
       } as any,
     });
   }
@@ -74,6 +76,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     locationSortOrder: formData.get("locationSortOrder") as string,
     fallbackRate: parseFloat(formData.get("fallbackRate") as string) || 0,
     deliveryTimeSlots: formData.get("deliveryTimeSlots") as string,
+    enableDeliveryNextWeekOnly: formData.get("enableDeliveryNextWeekOnly") === "on",
+    deliveryNextWeekSameWeekDays: formData.get("deliveryNextWeekSameWeekDays") as string || "[]",
   };
 
   await db.settings.upsert({
@@ -270,6 +274,24 @@ export default function SettingsPage() {
                   helpText="Allow customers to add delivery notes (written to Shopify order notes)"
                 />
                 <input type="hidden" name="enableDeliveryNote" value={enableDeliveryNote ? "on" : "off"} />
+                
+                <Divider />
+                
+                <Text as="h3" variant="headingSm">Delivery Next Week Only</Text>
+                <Checkbox
+                  label="Enable Delivery Next Week Only"
+                  checked={enableDeliveryNextWeekOnly}
+                  onChange={setEnableDeliveryNextWeekOnly}
+                  helpText="Force all deliveries to be scheduled for next week (except for selected same-week days)"
+                />
+                <input type="hidden" name="enableDeliveryNextWeekOnly" value={enableDeliveryNextWeekOnly ? "on" : "off"} />
+                <input type="hidden" name="deliveryNextWeekSameWeekDays" value={deliveryNextWeekSameWeekDays} />
+                
+                {enableDeliveryNextWeekOnly && (
+                  <Banner tone="info">
+                    <p>Select which days allow same-week delivery. All other days will require next week delivery.</p>
+                  </Banner>
+                )}
                 
                 <Divider />
                 
