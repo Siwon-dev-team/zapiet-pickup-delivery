@@ -13,6 +13,8 @@ interface WidgetSettings {
   preselectLocation: 'first' | '';
   fallbackRate: number;
   deliveryTimeSlots?: string;
+  enableDeliveryNextWeekOnly?: boolean;
+  deliveryNextWeekSameWeekDays?: string;
 }
 
 interface Location {

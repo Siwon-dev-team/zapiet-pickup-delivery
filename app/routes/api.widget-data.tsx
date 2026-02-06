@@ -74,6 +74,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           preselectLocation: s?.preselectLocation ?? "",
           fallbackRate: s?.fallbackRate ?? 0,
           deliveryTimeSlots: s?.deliveryTimeSlots ?? "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM",
+          enableDeliveryNextWeekOnly: s?.enableDeliveryNextWeekOnly ?? false,
+          deliveryNextWeekSameWeekDays: s?.deliveryNextWeekSameWeekDays ?? "[]",
       },
       locations,
       rates

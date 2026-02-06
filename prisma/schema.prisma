@@ -63,6 +63,8 @@ model Location {
   deliveryBlackoutDates   String   @default("[]")
   pickupTags              String   @default("")
   deliveryTags            String   @default("")
+  deliveryNextWeekOnly    Boolean  @default(false)
+  deliveryNextWeekSameWeekDays String @default("[]")
   notificationEmails      String   @default("")
   notificationPhones      String   @default("")
   allowedProducts         String   @default("all")
@@ -109,4 +111,6 @@ model Settings {
   locationSortOrder             String  @default("newest")
   fallbackRate                  Float   @default(0)
   deliveryTimeSlots             String  @default("9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM")
+  enableDeliveryNextWeekOnly    Boolean @default(false)
+  deliveryNextWeekSameWeekDays  String  @default("[]")
 }
