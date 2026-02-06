@@ -19,6 +19,7 @@ build/
 # Shopify
 .shopify/
 
-# Private documentation
+# Private documentation (not pushed to GitHub)
 IMPLEMENTATION_GUIDE_PRIVATE.md
+DEBUG_CART_PAGE_DRAWER.md
 *_PRIVATE.md

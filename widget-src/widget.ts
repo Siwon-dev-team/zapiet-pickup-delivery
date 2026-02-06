@@ -400,7 +400,6 @@ class ZapietWidget {
   private getTimeSlotsForDay(location: Location | null, isPickup: boolean, selectedDate?: string): string[] {
     if (!location) return [];
     
-    // Get day of week from selected date
     let dayName = '';
     if (selectedDate) {
       const date = new Date(selectedDate);
@@ -408,7 +407,6 @@ class ZapietWidget {
       dayName = dayNames[date.getDay()];
     }
     
-    // Try per-day time slots first
     const perDayField = isPickup ? location.pickupTimeSlotsPerDay : location.deliveryTimeSlotsPerDay;
     if (perDayField && dayName) {
       try {
@@ -417,11 +415,9 @@ class ZapietWidget {
           return perDay[dayName];
         }
       } catch (e) {
-        // Fall through to regular time slots
       }
     }
     
-    // Fall back to regular time slots
     const timeSlotsField = isPickup ? location.pickupTimeSlots : location.deliveryTimeSlots;
     if (timeSlotsField) {
       try {
@@ -430,7 +426,6 @@ class ZapietWidget {
           return parsed;
         }
       } catch (e) {
-        // Return empty to use defaults
       }
     }
     
@@ -580,7 +575,6 @@ class ZapietWidget {
       
       this.setupProgressiveDelivery(data);
       
-      // Update delivery date minimum after postal code check
       this.updateDeliveryDateMinimum();
     } else {
       resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>Sorry, we do not deliver to your postal code.</div>';
@@ -719,11 +713,9 @@ class ZapietWidget {
     const pickupPanel = this.getRootElement<HTMLElement>('#panel-pickup');
     const deliveryPanel = this.getRootElement<HTMLElement>('#panel-delivery');
     
-    // Use event delegation on root element
     this.root.addEventListener('click', (e: Event) => {
       const target = e.target as HTMLElement;
       
-      // Check if click is on delivery button or its children
       const deliveryBtn = target.closest('#btn-delivery');
       if (deliveryBtn) {
         e.preventDefault();
@@ -735,14 +727,12 @@ class ZapietWidget {
         if (pickupPanel) pickupPanel.style.display = 'none';
         if (deliveryPanel) deliveryPanel.style.display = 'block';
         
-        // Update delivery date minimum when switching to delivery
         this.updateDeliveryDateMinimum();
         
         this.setMethodAttribute('Delivery');
         return;
       }
       
-      // Check if click is on pickup button or its children
       const pickupBtn = target.closest('#btn-pickup');
       if (pickupBtn) {
         e.preventDefault();
@@ -765,41 +755,27 @@ class ZapietWidget {
     tomorrow.setDate(tomorrow.getDate() + 1);
     let minDate = tomorrow.toISOString().split('T')[0];
 
-    // Check global setting OR per-location setting
     let enableNextWeekOnly = this.data?.settings.enableDeliveryNextWeekOnly || false;
     let sameWeekDaysJson = this.data?.settings.deliveryNextWeekSameWeekDays || '[]';
     
-    console.log('[Zapiet Delivery Next Week] Checking delivery min date...');
-    console.log('[Zapiet Delivery Next Week] Global enableDeliveryNextWeekOnly:', enableNextWeekOnly);
-    console.log('[Zapiet Delivery Next Week] Global sameWeekDays:', sameWeekDaysJson);
-    
-    // Check if any delivery location has per-location override
     const locations = this.deliveryLocationsForPostal || this.eligibleDeliveryLocations;
-    console.log('[Zapiet Delivery Next Week] Checking locations:', locations?.length || 0);
     
     if (locations && locations.length > 0) {
-      // Check if ANY location has delivery next week enabled
       for (const location of locations) {
-        console.log('[Zapiet Delivery Next Week] Location:', location.name, 'deliveryNextWeekOnly:', location.deliveryNextWeekOnly);
         if (location.deliveryNextWeekOnly) {
           enableNextWeekOnly = true;
           sameWeekDaysJson = location.deliveryNextWeekSameWeekDays || '[]';
-          console.log('[Zapiet Delivery Next Week] Using location override:', location.name);
           break;
         }
       }
     }
 
-    // Apply next week logic if enabled
     if (enableNextWeekOnly) {
       const today = new Date();
-      const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const currentDay = today.getDay();
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const currentDayName = dayNames[currentDay];
       
-      console.log('[Zapiet Delivery Next Week] Current day:', currentDayName, '(', currentDay, ')');
-      
-      // Parse same-week days
       let sameWeekDays: string[] = [];
       try {
         const parsed = JSON.parse(sameWeekDaysJson);
@@ -808,19 +784,11 @@ class ZapietWidget {
         sameWeekDays = [];
       }
       
-      console.log('[Zapiet Delivery Next Week] Same-week days:', sameWeekDays);
-      
-      // If current day is NOT in same-week days, force next week delivery
       if (!sameWeekDays.includes(currentDayName)) {
         const nextWeek = new Date();
         nextWeek.setDate(today.getDate() + 7);
         minDate = nextWeek.toISOString().split('T')[0];
-        console.log('[Zapiet Delivery Next Week] Forcing next week delivery. Min date:', minDate);
-      } else {
-        console.log('[Zapiet Delivery Next Week] Same-week delivery allowed. Min date:', minDate);
       }
-    } else {
-      console.log('[Zapiet Delivery Next Week] Feature disabled. Min date:', minDate);
     }
     
     return minDate;
@@ -831,7 +799,6 @@ class ZapietWidget {
     if (deliveryDate) {
       const newMin = this.getDeliveryMinDate();
       deliveryDate.min = newMin;
-      console.log('[Zapiet Delivery Next Week] Updated delivery date minimum to:', newMin);
     }
   }
 
@@ -848,7 +815,6 @@ class ZapietWidget {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = pickupDate.value;
         
-        // Update time slots based on selected date
         const selectedLocationEl = this.root.querySelector('.zapiet-location-item.selected');
         if (selectedLocationEl) {
           const locationId = selectedLocationEl.getAttribute('data-location-id');
@@ -869,7 +835,6 @@ class ZapietWidget {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = deliveryDate.value;
         
-        // Update time slots based on selected date
         if (this.deliveryLocationsForPostal && this.deliveryLocationsForPostal.length > 0) {
           const location = this.deliveryLocationsForPostal[0];
           const timeSlotsForDay = this.getTimeSlotsForDay(location, false, deliveryDate.value);

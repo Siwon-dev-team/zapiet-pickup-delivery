@@ -317,7 +317,6 @@ export default function LocationsPage() {
       setPickupTimeSlots(parseArray(location.pickupTimeSlots).join("\n"));
       setDeliveryTimeSlots(parseArray(location.deliveryTimeSlots).join("\n"));
       
-      // Parse per-day time slots
       try {
         const pickupPerDay = JSON.parse(location.pickupTimeSlotsPerDay || "{}");
         setPickupTimeSlotsPerDay(pickupPerDay);
