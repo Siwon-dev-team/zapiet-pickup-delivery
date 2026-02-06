@@ -6,7 +6,7 @@ A Shopify app that enables merchants to offer store pickup and local delivery op
 
 ### Core Functionality
 - **Store Pickup**: Customers select pickup locations with scheduled date/time slots
-- **Local Delivery**: Postal code validation with progressive field display (postal code → date → time)
+- **Local Delivery**: Postal code validation with progressive field display (postal code  date  time)
 - **Order Notes**: Customers can add general order notes and method-specific notes
 - **Custom Rates**: Price-based and weight-based shipping rates per location
 
@@ -18,9 +18,9 @@ A Shopify app that enables merchants to offer store pickup and local delivery op
 - **Business Hours Display**: Show location-specific opening hours
 - **Fallback Rates**: Default shipping costs when no rules match
 
-### 🆕 New Features (Feb 2026)
+###  New Features (Feb 2026)
 
-#### ⏰ Per-Day Time Slots
+####  Per-Day Time Slots
 Set different pickup/delivery time slots for each day of the week with an intuitive tab interface.
 
 **Use Case**: A bakery that has different pickup times on weekends vs weekdays.
@@ -41,11 +41,11 @@ Sunday:    Closed (no time slots)
 - Falls back to regular time slots if per-day not configured
 - Updates automatically when date changes
 
-**Where**: Locations page → Edit location → Pickup/Delivery Availability → Tab layout
+**Where**: Locations page  Edit location  Pickup/Delivery Availability  Tab layout
 
 ---
 
-#### 📅 Delivery Next Week Only
+####  Delivery Next Week Only
 Force deliveries to be scheduled 7+ days in advance, with configurable same-week exceptions.
 
 **Use Case**: Businesses that need significant preparation time (custom cakes, flowers, etc.).
@@ -56,8 +56,8 @@ Setting: Delivery Next Week Only = ON
 Same-week exception days: Saturday, Sunday
 
 Results:
-• Order on Monday-Friday → Must deliver 7+ days out (next week)
-• Order on Saturday-Sunday → Can deliver tomorrow (same week allowed)
+� Order on Monday-Friday  Must deliver 7+ days out (next week)
+� Order on Saturday-Sunday  Can deliver tomorrow (same week allowed)
 ```
 
 **Features**:
@@ -67,8 +67,8 @@ Results:
 - Location setting takes precedence over global
 
 **Where**: 
-- **Global**: Settings page → Delivery Next Week Only
-- **Per-Location**: Locations page → Edit location → Delivery Availability
+- **Global**: Settings page  Delivery Next Week Only
+- **Per-Location**: Locations page  Edit location  Delivery Availability
 
 ---
 
@@ -138,29 +138,29 @@ npx prisma db push       # Sync database schema
 
 ```
 app/
-├── routes/
-│   ├── app.*.tsx              # Admin dashboard pages
-│   ├── api.widget-data.tsx    # Widget API endpoint
-│   └── webhooks.*.tsx         # Shopify webhooks
-├── db.server.ts               # Prisma database client
-└── shopify.server.ts          # Shopify app configuration
+ routes/
+�    app.*.tsx              # Admin dashboard pages
+�    api.widget-data.tsx    # Widget API endpoint
+�    webhooks.*.tsx         # Shopify webhooks
+ db.server.ts               # Prisma database client
+ shopify.server.ts          # Shopify app configuration
 
 extensions/zapiet-widget/
-├── blocks/
-│   ├── app-embed.liquid       # Widget container & injection logic
-│   └── pickup-delivery.liquid # Product page block
-├── assets/
-│   ├── widget.js              # Compiled widget bundle
-│   └── widget.css             # Widget styles
-└── shopify.extension.toml     # Extension configuration
+ blocks/
+�    app-embed.liquid       # Widget container & injection logic
+�    pickup-delivery.liquid # Product page block
+ assets/
+�    widget.js              # Compiled widget bundle
+�    widget.css             # Widget styles
+ shopify.extension.toml     # Extension configuration
 
 widget-src/
-├── widget.ts                  # Widget TypeScript source
-└── build.ts                   # ESBuild compilation script
+ widget.ts                  # Widget TypeScript source
+ build.ts                   # ESBuild compilation script
 
 prisma/
-├── schema.prisma              # Database models
-└── migrations/                # Migration history
+ schema.prisma              # Database models
+ migrations/                # Migration history
 ```
 
 ---
@@ -204,7 +204,7 @@ Shopify app session management
 
 ## Testing Guide
 
-### 🧪 Test Setup
+###  Test Setup
 
 #### Test Locations Provided
 
@@ -234,14 +234,14 @@ sqlite3 prisma/dev.sqlite "DELETE FROM Location WHERE id LIKE 'test-loc-%';"
 
 ---
 
-### ✅ Core Features Testing
+###  Core Features Testing
 
 #### 1. Test Cart Page & Cart Drawer
 **Critical**: Both must work identically.
 
 1. **Empty Cart Test**:
-   - Open cart drawer (empty) → Widget should show
-   - Add item → Widget updates with options
+   - Open cart drawer (empty)  Widget should show
+   - Add item  Widget updates with options
 
 2. **Cart Page Test**:
    - Navigate to `/cart`
@@ -291,12 +291,12 @@ sqlite3 prisma/dev.sqlite "DELETE FROM Location WHERE id LIKE 'test-loc-%';"
 
 ---
 
-### 🆕 New Features Testing
+###  New Features Testing
 
 #### 4. Test Per-Day Time Slots
 
 **Setup**:
-1. Go to **Locations** → Edit **[TEST] Normal Store**
+1. Go to **Locations**  Edit **[TEST] Normal Store**
 2. Scroll to **"Or set different time slots for each day"**
 3. Click **Monday** tab
 4. Enter: `9:00 AM - 12:00 PM` (new line) `1:00 PM - 5:00 PM`
@@ -321,7 +321,7 @@ sqlite3 prisma/dev.sqlite "DELETE FROM Location WHERE id LIKE 'test-loc-%';"
 1. Edit a location WITHOUT per-day slots
 2. Only fill regular "Time Slots" field
 3. In storefront, select this location
-4. Change dates → Time slots should stay the same (fallback behavior)
+4. Change dates  Time slots should stay the same (fallback behavior)
 
 ---
 
@@ -352,7 +352,7 @@ sqlite3 prisma/dev.sqlite "DELETE FROM Location WHERE id LIKE 'test-loc-%';"
 1. Go to **Settings**
 2. **Disable** "Delivery Next Week Only" (turn OFF)
 3. Save
-4. Go to **Locations** → Edit **[TEST] Next Week Store**
+4. Go to **Locations**  Edit **[TEST] Next Week Store**
 5. Scroll to delivery section
 6. Enable **"Delivery Next Week Only (Location Override)"**
 7. Select **Saturday** and **Sunday**
@@ -373,18 +373,18 @@ sqlite3 prisma/dev.sqlite "DELETE FROM Location WHERE id LIKE 'test-loc-%';"
 
 ---
 
-### 📊 Advanced Testing Scenarios
+###  Advanced Testing Scenarios
 
 #### Multi-Location Testing
 1. Create locations with different per-day time slots
 2. Customer checks postal code
 3. Multiple locations eligible
-4. Select different locations → Verify time slots change
+4. Select different locations  Verify time slots change
 
 #### Edge Cases
-1. **Empty Time Slots**: Leave a day empty → Should show no slots for that day
-2. **JSON Fallback**: Delete per-day slots → Should use regular time slots
-3. **Invalid JSON**: Manually corrupt JSON in DB → Should fall back gracefully
+1. **Empty Time Slots**: Leave a day empty  Should show no slots for that day
+2. **JSON Fallback**: Delete per-day slots  Should use regular time slots
+3. **Invalid JSON**: Manually corrupt JSON in DB  Should fall back gracefully
 4. **Date Boundaries**: Test on Sunday evening, verify Monday calculation
 5. **Leap Years**: Test Feb 29 on leap years
 
@@ -395,7 +395,7 @@ sqlite3 prisma/dev.sqlite "DELETE FROM Location WHERE id LIKE 'test-loc-%';"
 ### Common Issues
 
 #### Widget Not Loading
-1. Check Theme Editor → App Embeds → "Zapiet App Embed" is **ON**
+1. Check Theme Editor  App Embeds  "Zapiet App Embed" is **ON**
 2. Check browser console for errors
 3. Check Network tab for `/apps/zapiet` API call (should return 200)
 4. Verify `#zapiet-widget-root` exists in DOM
@@ -563,18 +563,18 @@ View and filter orders by pickup/delivery method.
 ```typescript
 // Get time slots based on selected date
 getTimeSlotsForDay(location, isPickup, selectedDate)
-  → Checks per-day time slots first
-  → Falls back to regular time slots
-  → Returns array of time strings
+   Checks per-day time slots first
+   Falls back to regular time slots
+   Returns array of time strings
 ```
 
 #### Delivery Date Restriction
 ```typescript
 // Calculate minimum delivery date
 getDeliveryMinDate()
-  → Checks global/location settings
-  → Calculates based on current day
-  → Returns ISO date string (YYYY-MM-DD)
+   Checks global/location settings
+   Calculates based on current day
+   Returns ISO date string (YYYY-MM-DD)
 ```
 
 #### Event Handling
@@ -597,8 +597,8 @@ getDeliveryMinDate()
 
 2. **Customer Selection**:
    - Customer chooses pickup or delivery
-   - For pickup: Selects location → date → time
-   - For delivery: Enters postal code → selects date → time
+   - For pickup: Selects location  date  time
+   - For delivery: Enters postal code  selects date  time
    - Widget validates and shows rates
 
 3. **Date & Time Selection**:
@@ -653,8 +653,8 @@ getDeliveryMinDate()
 - Delivery Preparation Days: 1
 
 **Result**: 
-- Orders Mon-Fri → Deliver 7+ days out (next week)
-- Orders Sat-Sun → Deliver from tomorrow
+- Orders Mon-Fri  Deliver 7+ days out (next week)
+- Orders Sat-Sun  Deliver from tomorrow
 - Different time slots for weekday vs weekend
 
 ---
@@ -745,46 +745,16 @@ SELECT name, deliveryNextWeekOnly, deliveryNextWeekSameWeekDays FROM Location;
 ## Version History
 
 ### v2.0.0 (Feb 6, 2026)
-- ✨ Added per-day time slots with tab interface
-- ✨ Added delivery next week only feature
-- ✨ Added per-location delivery next week override
-- 🐛 Fixed cart drawer race conditions
-- 🐛 Fixed widget visibility issues
-- 📚 Added comprehensive documentation
+- Added per-day time slots with tab interface
+- Added delivery next week only feature
+- Added per-location delivery next week override
+- Fixed cart drawer race conditions
+- Fixed widget visibility issues
+- Added comprehensive documentation
 
 ### v1.0.0 (Jan 2026)
-- 🎉 Initial release
-- ✅ Store pickup functionality
-- ✅ Local delivery with postal code validation
-- ✅ Custom rates (price/weight based)
-- ✅ Admin UI with Shopify Polaris
-
----
-
-## Contributing
-
-1. Create a feature branch
-2. Make changes
-3. Test thoroughly (cart page AND drawer)
-4. Update documentation if needed
-5. Submit pull request
-
----
-
-## License
-
-Proprietary - Siwon Dev Team
-
----
-
-## Support
-
-For issues or questions, refer to:
-- `DEBUG_CART_PAGE_DRAWER.md` - Debugging guide for cart issues
-- `IMPLEMENTATION_GUIDE_PRIVATE.md` - Detailed implementation notes (local only)
-
----
-
-*Last Updated: February 6, 2026*  
-*Version: 2.0.0*  
-*All features complete (5/5 requirements)*
+- Initial release
+- Store pickup functionality
+- Local delivery with postal code validation
+- Custom rates (price/weight based)
+- Admin UI with Shopify Polaris

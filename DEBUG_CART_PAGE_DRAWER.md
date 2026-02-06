@@ -1,6 +1,6 @@
 # Lessons Learned - Cart Page & Drawer Issues
 
-## ⚠️ Critical Mistakes to Avoid
+##  Critical Mistakes to Avoid
 
 ### 1. **Race Conditions with Cart Data**
 
@@ -203,7 +203,7 @@ root.addEventListener('click', (e) => {
 
 ---
 
-## 🎯 Prevention Checklist
+##  Prevention Checklist
 
 Before deploying widget changes:
 
@@ -220,7 +220,7 @@ Before deploying widget changes:
 
 ---
 
-## 🔄 Debugging Workflow
+##  Debugging Workflow
 
 When widget doesn't load:
 
@@ -250,7 +250,7 @@ When widget doesn't load:
 
 ---
 
-## 📝 Key Takeaways
+##  Key Takeaways
 
 1. **Async is King**: Always handle cart data asynchronously
 2. **Trust Git**: Known working version > experimental fixes
@@ -261,13 +261,13 @@ When widget doesn't load:
 
 ---
 
-## 🚨 Red Flags to Watch For
+##  Red Flags to Watch For
 
-- Widget shows in one state but not another → Check conditional logic
-- Widget exists but invisible → Check CSS/display properties
-- Widget appears multiple times → Check cleanup logic
-- Widget loses state after navigation → Check event delegation
-- Works on page but not drawer → Check selector specificity
+- Widget shows in one state but not another  Check conditional logic
+- Widget exists but invisible  Check CSS/display properties
+- Widget appears multiple times  Check cleanup logic
+- Widget loses state after navigation  Check event delegation
+- Works on page but not drawer  Check selector specificity
 
 ---
 
