@@ -287,13 +287,51 @@ export default function SettingsPage() {
                   helpText="Force all deliveries to be scheduled for next week (except for selected same-week days)"
                 />
                 <input type="hidden" name="enableDeliveryNextWeekOnly" value={enableDeliveryNextWeekOnly ? "on" : "off"} />
-                <input type="hidden" name="deliveryNextWeekSameWeekDays" value={deliveryNextWeekSameWeekDays} />
                 
                 {enableDeliveryNextWeekOnly && (
-                  <Banner tone="info">
-                    <p>Select which days allow same-week delivery. All other days will require next week delivery.</p>
-                  </Banner>
+                  <>
+                    <Banner tone="info">
+                      <p>Select which days allow same-week delivery. All other days will require next week delivery.</p>
+                    </Banner>
+                    
+                    <BlockStack gap="200">
+                      <Text as="p" variant="bodyMd" fontWeight="semibold">Same-Week Delivery Days:</Text>
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                        const dayLower = day.toLowerCase();
+                        let selectedDays: string[] = [];
+                        try {
+                          selectedDays = JSON.parse(deliveryNextWeekSameWeekDays);
+                        } catch (e) {
+                          selectedDays = [];
+                        }
+                        const isChecked = selectedDays.includes(dayLower);
+                        
+                        return (
+                          <Checkbox
+                            key={day}
+                            label={day}
+                            checked={isChecked}
+                            onChange={(checked) => {
+                              const current = [...selectedDays];
+                              if (checked) {
+                                if (!current.includes(dayLower)) {
+                                  current.push(dayLower);
+                                }
+                              } else {
+                                const index = current.indexOf(dayLower);
+                                if (index > -1) {
+                                  current.splice(index, 1);
+                                }
+                              }
+                              setDeliveryNextWeekSameWeekDays(JSON.stringify(current));
+                            }}
+                          />
+                        );
+                      })}
+                    </BlockStack>
+                  </>
                 )}
+                <input type="hidden" name="deliveryNextWeekSameWeekDays" value={deliveryNextWeekSameWeekDays} />
                 
                 <Divider />
                 
