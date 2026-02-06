@@ -535,6 +535,9 @@ class ZapietWidget {
       }
       
       this.setupProgressiveDelivery(data);
+      
+      // Update delivery date minimum after postal code check
+      this.updateDeliveryDateMinimum();
     } else {
       resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>Sorry, we do not deliver to your postal code.</div>';
       this.deliveryLocationsForPostal = null;
@@ -688,6 +691,9 @@ class ZapietWidget {
         if (pickupPanel) pickupPanel.style.display = 'none';
         if (deliveryPanel) deliveryPanel.style.display = 'block';
         
+        // Update delivery date minimum when switching to delivery
+        this.updateDeliveryDateMinimum();
+        
         this.setMethodAttribute('Delivery');
         return;
       }
@@ -719,13 +725,24 @@ class ZapietWidget {
     let enableNextWeekOnly = this.data?.settings.enableDeliveryNextWeekOnly || false;
     let sameWeekDaysJson = this.data?.settings.deliveryNextWeekSameWeekDays || '[]';
     
-    // Check if any selected delivery location has per-location override
+    console.log('[Zapiet Delivery Next Week] Checking delivery min date...');
+    console.log('[Zapiet Delivery Next Week] Global enableDeliveryNextWeekOnly:', enableNextWeekOnly);
+    console.log('[Zapiet Delivery Next Week] Global sameWeekDays:', sameWeekDaysJson);
+    
+    // Check if any delivery location has per-location override
     const locations = this.deliveryLocationsForPostal || this.eligibleDeliveryLocations;
+    console.log('[Zapiet Delivery Next Week] Checking locations:', locations?.length || 0);
+    
     if (locations && locations.length > 0) {
-      const firstLocation = locations[0];
-      if (firstLocation.deliveryNextWeekOnly) {
-        enableNextWeekOnly = true;
-        sameWeekDaysJson = firstLocation.deliveryNextWeekSameWeekDays || '[]';
+      // Check if ANY location has delivery next week enabled
+      for (const location of locations) {
+        console.log('[Zapiet Delivery Next Week] Location:', location.name, 'deliveryNextWeekOnly:', location.deliveryNextWeekOnly);
+        if (location.deliveryNextWeekOnly) {
+          enableNextWeekOnly = true;
+          sameWeekDaysJson = location.deliveryNextWeekSameWeekDays || '[]';
+          console.log('[Zapiet Delivery Next Week] Using location override:', location.name);
+          break;
+        }
       }
     }
 
@@ -736,6 +753,8 @@ class ZapietWidget {
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const currentDayName = dayNames[currentDay];
       
+      console.log('[Zapiet Delivery Next Week] Current day:', currentDayName, '(', currentDay, ')');
+      
       // Parse same-week days
       let sameWeekDays: string[] = [];
       try {
@@ -745,15 +764,31 @@ class ZapietWidget {
         sameWeekDays = [];
       }
       
+      console.log('[Zapiet Delivery Next Week] Same-week days:', sameWeekDays);
+      
       // If current day is NOT in same-week days, force next week delivery
       if (!sameWeekDays.includes(currentDayName)) {
         const nextWeek = new Date();
         nextWeek.setDate(today.getDate() + 7);
         minDate = nextWeek.toISOString().split('T')[0];
+        console.log('[Zapiet Delivery Next Week] Forcing next week delivery. Min date:', minDate);
+      } else {
+        console.log('[Zapiet Delivery Next Week] Same-week delivery allowed. Min date:', minDate);
       }
+    } else {
+      console.log('[Zapiet Delivery Next Week] Feature disabled. Min date:', minDate);
     }
     
     return minDate;
+  }
+  
+  private updateDeliveryDateMinimum(): void {
+    const deliveryDate = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
+    if (deliveryDate) {
+      const newMin = this.getDeliveryMinDate();
+      deliveryDate.min = newMin;
+      console.log('[Zapiet Delivery Next Week] Updated delivery date minimum to:', newMin);
+    }
   }
 
   private setupDateMinimums(): void {
