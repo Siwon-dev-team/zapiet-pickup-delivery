@@ -1,26 +1,24 @@
-node_modules
-.DS_Store
-
-/.cache
-/build
-/app/build
-/public/build/
-/public/_dev
-/app/public/build
-/prisma/dev.sqlite
-/prisma/dev.sqlite-journal
-database.sqlite
-
+node_modules/
 .env
-.env.*
+.DS_Store
+*.log
+.vscode/
+.idea/
 
+# Database
+prisma/*.db
+prisma/*.db-journal
+dev.sqlite
+dev.sqlite-journal
 
+# Build
+dist/
+build/
+.cache/
 
+# Shopify
+.shopify/
 
-
-/extensions/*/dist
-/extensions/zapiet-widget/assets/widget.js
-
-
-.shopify/*
-.shopify.lock
+# Private documentation
+IMPLEMENTATION_GUIDE_PRIVATE.md
+*_PRIVATE.md
