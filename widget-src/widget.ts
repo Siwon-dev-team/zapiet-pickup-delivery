@@ -711,13 +711,37 @@ class ZapietWidget {
   private setupDateMinimums(): void {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const minDate = tomorrow.toISOString().split('T')[0];
+    let minDate = tomorrow.toISOString().split('T')[0];
+
+    // Check if delivery next week only is enabled
+    if (this.data?.settings.enableDeliveryNextWeekOnly) {
+      const today = new Date();
+      const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const currentDayName = dayNames[currentDay];
+      
+      // Parse same-week days
+      let sameWeekDays: string[] = [];
+      try {
+        const parsed = JSON.parse(this.data.settings.deliveryNextWeekSameWeekDays || '[]');
+        sameWeekDays = Array.isArray(parsed) ? parsed.map(d => String(d).toLowerCase()) : [];
+      } catch (e) {
+        sameWeekDays = [];
+      }
+      
+      // If current day is NOT in same-week days, force next week delivery
+      if (!sameWeekDays.includes(currentDayName)) {
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+        minDate = nextWeek.toISOString().split('T')[0];
+      }
+    }
 
     const pickupDate = this.getRootElement<HTMLInputElement>('#zapiet-pickup-date');
     const deliveryDate = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
 
     if (pickupDate) {
-      pickupDate.min = minDate;
+      pickupDate.min = tomorrow.toISOString().split('T')[0];
       pickupDate.addEventListener('change', () => {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = pickupDate.value;
