@@ -29,6 +29,10 @@ interface Location {
   deliveryActivationConditions: string;
   deliveryNextWeekOnly?: boolean;
   deliveryNextWeekSameWeekDays?: string;
+  pickupTimeSlots?: string;
+  deliveryTimeSlots?: string;
+  pickupTimeSlotsPerDay?: string;
+  deliveryTimeSlotsPerDay?: string;
 }
 
 interface Rate {
@@ -391,6 +395,46 @@ class ZapietWidget {
     } catch (e) {
       return `[${locationName}]`;
     }
+  }
+
+  private getTimeSlotsForDay(location: Location | null, isPickup: boolean, selectedDate?: string): string[] {
+    if (!location) return [];
+    
+    // Get day of week from selected date
+    let dayName = '';
+    if (selectedDate) {
+      const date = new Date(selectedDate);
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      dayName = dayNames[date.getDay()];
+    }
+    
+    // Try per-day time slots first
+    const perDayField = isPickup ? location.pickupTimeSlotsPerDay : location.deliveryTimeSlotsPerDay;
+    if (perDayField && dayName) {
+      try {
+        const perDay = JSON.parse(perDayField);
+        if (perDay[dayName] && Array.isArray(perDay[dayName]) && perDay[dayName].length > 0) {
+          return perDay[dayName];
+        }
+      } catch (e) {
+        // Fall through to regular time slots
+      }
+    }
+    
+    // Fall back to regular time slots
+    const timeSlotsField = isPickup ? location.pickupTimeSlots : location.deliveryTimeSlots;
+    if (timeSlotsField) {
+      try {
+        const parsed = JSON.parse(timeSlotsField);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        // Return empty to use defaults
+      }
+    }
+    
+    return [];
   }
 
   private populateTimeSlots(selectId: string, timeSlots?: string[]): void {
@@ -803,6 +847,18 @@ class ZapietWidget {
       pickupDate.addEventListener('change', () => {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = pickupDate.value;
+        
+        // Update time slots based on selected date
+        const selectedLocationEl = this.root.querySelector('.zapiet-location-item.selected');
+        if (selectedLocationEl) {
+          const locationId = selectedLocationEl.getAttribute('data-location-id');
+          const location = this.eligiblePickupLocations.find(loc => loc.id === locationId);
+          if (location) {
+            const timeSlotsForDay = this.getTimeSlotsForDay(location, true, pickupDate.value);
+            this.populateTimeSlots('zapiet-pickup-time', timeSlotsForDay);
+          }
+        }
+        
         this.updateCartAttributes();
       });
     }
@@ -812,6 +868,14 @@ class ZapietWidget {
       deliveryDate.addEventListener('change', () => {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = deliveryDate.value;
+        
+        // Update time slots based on selected date
+        if (this.deliveryLocationsForPostal && this.deliveryLocationsForPostal.length > 0) {
+          const location = this.deliveryLocationsForPostal[0];
+          const timeSlotsForDay = this.getTimeSlotsForDay(location, false, deliveryDate.value);
+          this.populateTimeSlots('zapiet-delivery-time', timeSlotsForDay);
+        }
+        
         this.updateCartAttributes();
       });
     }
