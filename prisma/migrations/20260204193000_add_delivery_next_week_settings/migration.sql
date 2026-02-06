@@ -1,0 +1,2 @@
+-- This migration was applied previously.
+-- No-op file restored to match _prisma_migrations.
