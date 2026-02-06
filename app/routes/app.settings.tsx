@@ -115,6 +115,8 @@ export default function SettingsPage() {
     settings.deliveryTimeSlots ||
       "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM"
   );
+  const [enableDeliveryNextWeekOnly, setEnableDeliveryNextWeekOnly] = useState(settings.enableDeliveryNextWeekOnly || false);
+  const [deliveryNextWeekSameWeekDays, setDeliveryNextWeekSameWeekDays] = useState(settings.deliveryNextWeekSameWeekDays || "[]");
 
   const handleSubmit = () => {
     const form = document.querySelector('form');
