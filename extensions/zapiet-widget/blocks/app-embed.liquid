@@ -522,6 +522,8 @@
     border-top: 1px solid #e5e7eb;
     border-radius: 0;
     margin: 0;
+    overflow-y: visible !important;
+    overflow-x: visible !important;
   }
   
   @media (max-width: 749px) {
@@ -821,6 +823,34 @@
     font-size: 14px;
   }
 
+  /* Flatpickr calendar z-index for cart drawer/modal */
+  .flatpickr-calendar {
+    z-index: 2147483647 !important;
+  }
+
+  .flatpickr-calendar.open {
+    z-index: 2147483647 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .flatpickr-calendar.inline {
+    z-index: 2147483647 !important;
+  }
+
+  /* Ensure flatpickr is above ALL possible overlays */
+  body > .flatpickr-calendar {
+    z-index: 2147483647 !important;
+  }
+
+  /* Make sure date input is clickable */
+  #zapiet-pickup-date,
+  #zapiet-delivery-date {
+    cursor: pointer !important;
+    background-color: white !important;
+  }
+
   @media (max-width: 640px) {
     #zapiet-widget-root {
       max-height: 60vh;
@@ -847,7 +877,28 @@
 </style>
 
 <link rel="stylesheet" href="{{ 'widget.css' | asset_url }}">
-<script src="{{ 'widget.js' | asset_url }}" defer></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script>
+  // Load flatpickr first, then load the widget
+  (function() {
+    var flatpickrScript = document.createElement('script');
+    flatpickrScript.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+    flatpickrScript.onload = function() {
+      // Now load the widget
+      var widgetScript = document.createElement('script');
+      widgetScript.src = '{{ 'widget.js' | asset_url }}';
+      document.body.appendChild(widgetScript);
+    };
+    flatpickrScript.onerror = function() {
+      console.error('[Zapiet] Failed to load Flatpickr from CDN');
+      // Load widget anyway as fallback
+      var widgetScript = document.createElement('script');
+      widgetScript.src = '{{ 'widget.js' | asset_url }}';
+      document.body.appendChild(widgetScript);
+    };
+    document.head.appendChild(flatpickrScript);
+  })();
+</script>
 
 {% schema %}
 {

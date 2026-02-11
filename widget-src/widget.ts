@@ -1,3 +1,4 @@
+
 interface WidgetSettings {
   enablePickup: boolean;
   enableDelivery: boolean;
@@ -33,6 +34,11 @@ interface Location {
   deliveryTimeSlots?: string;
   pickupTimeSlotsPerDay?: string;
   deliveryTimeSlotsPerDay?: string;
+  pickupDays?: string;
+  deliveryDays?: string;
+  pickupPreparationDays?: number;
+  pickupMaxDaysInAdvance?: number;
+  deliveryMaxDaysInAdvance?: number;
 }
 
 interface Rate {
@@ -73,6 +79,8 @@ class ZapietWidget {
   private eligiblePickupLocations: Location[] = [];
   private eligibleDeliveryLocations: Location[] = [];
   private deliveryLocationsForPostal: Location[] | null = null;
+  private pickupDatePicker: any = null;
+  private deliveryDatePicker: any = null;
 
   constructor(rootId: string) {
     const rootElement = document.getElementById(rootId);
@@ -102,7 +110,7 @@ class ZapietWidget {
       if (!data || !data.settings) {
         throw new Error('Invalid API response: missing data');
       }
-      
+
       if (loading) {
         loading.style.display = 'none';
         loading.style.visibility = 'hidden';
@@ -139,6 +147,7 @@ class ZapietWidget {
       }
     }
   }
+
 
   private applyPrimaryColor(color: string): void {
     if (color) {
@@ -210,6 +219,225 @@ class ZapietWidget {
       .split(',')
       .map(slot => slot.trim())
       .filter(Boolean);
+  }
+
+  private toLocalDateString(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private initPickupDatePicker(input: HTMLInputElement, allowedDays: string[], minDate: Date, maxDate?: Date, location?: Location): void {
+    if (this.pickupDatePicker) {
+      this.pickupDatePicker.destroy();
+    }
+
+    if (typeof (window as any).flatpickr === 'undefined') {
+      console.error('[Zapiet] Flatpickr not loaded yet. Retrying in 500ms...');
+      setTimeout(() => {
+        this.initPickupDatePicker(input, allowedDays, minDate, maxDate, location);
+      }, 500);
+      return;
+    }
+
+    // @ts-ignore - flatpickr is loaded via CDN
+    this.pickupDatePicker = flatpickr(input, {
+      minDate: minDate,
+      maxDate: maxDate || null,
+      dateFormat: 'Y-m-d',
+      appendTo: document.body,
+      static: false, // Keep as popup (not inline)
+      clickOpens: true,
+      allowInput: false,
+      defaultDate: null,
+      inline: false,
+      disableMobile: true,
+      ignoredFocusElements: [],
+      disable: [
+        (date: Date) => {
+          if (allowedDays.length === 0) return false;
+          const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+          const dayName = dayNames[date.getDay()];
+          const allowedLower = allowedDays.map(d => d.toLowerCase());
+          const shouldDisable = !allowedLower.includes(dayName);
+
+          return shouldDisable;
+        }
+      ],
+      onOpen: (_selectedDates: Date[], _dateStr: string, instance: any) => {
+        setTimeout(() => {
+          const calendarContainer = instance.calendarContainer;
+          const inputRect = input.getBoundingClientRect();
+
+          if (calendarContainer) {
+            calendarContainer.className = calendarContainer.className
+              .split(' ')
+              .filter((cls: string) => !cls.startsWith('arrow'))
+              .join(' ');
+            
+            if (inputRect.width === 0 || inputRect.height === 0) {
+              console.error('[Zapiet] Input has zero dimensions, cannot position calendar');
+              return;
+            }
+            
+            let leftPos = Math.max(10, Math.min(inputRect.left, window.innerWidth - 320));
+            let topPos = inputRect.bottom + 4;
+            
+            if (topPos + 320 > window.innerHeight) {
+              topPos = Math.max(10, inputRect.top - 324);
+            }
+            
+            if (leftPos < 0 || leftPos > window.innerWidth || topPos < 0 || topPos > window.innerHeight) {
+              leftPos = Math.max(10, (window.innerWidth - 320) / 2);
+              topPos = Math.max(10, (window.innerHeight - 320) / 2);
+            }
+            
+            calendarContainer.style.cssText = `
+              position: fixed !important;
+              left: ${leftPos}px !important;
+              top: ${topPos}px !important;
+              right: auto !important;
+              bottom: auto !important;
+              z-index: 2147483647 !important;
+              display: block !important;
+              visibility: visible !important;
+              opacity: 1 !important;
+              pointer-events: auto !important;
+              transform: none !important;
+              margin: 0 !important;
+              max-height: ${Math.min(320, window.innerHeight - topPos - 20)}px !important;
+              overflow: auto !important;
+            `;
+
+            void calendarContainer.offsetHeight;
+          }
+        }, 50); // Increased timeout to 50ms to ensure flatpickr is done
+      },
+      onChange: (selectedDates: Date[], dateStr: string) => {
+        const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
+        if (dateAttr) dateAttr.value = dateStr;
+        
+        if (location && dateStr) {
+          const timeSlots = this.getTimeSlotsForDay(location, true, dateStr);
+          this.populateTimeSlots('zapiet-pickup-time', timeSlots);
+        }
+        
+        this.updateCartAttributes();
+      }
+    });
+
+    input.style.cursor = 'pointer';
+    input.setAttribute('readonly', 'readonly');
+  }
+
+  private initDeliveryDatePicker(input: HTMLInputElement, allowedDays: string[], minDate: Date, maxDate?: Date): void {
+    if (this.deliveryDatePicker) {
+      this.deliveryDatePicker.destroy();
+    }
+
+    if (typeof (window as any).flatpickr === 'undefined') {
+      console.error('[Zapiet] Flatpickr not loaded yet. Retrying in 500ms...');
+      setTimeout(() => {
+        this.initDeliveryDatePicker(input, allowedDays, minDate, maxDate);
+      }, 500);
+      return;
+    }
+
+    // @ts-ignore - flatpickr is loaded via CDN
+    this.deliveryDatePicker = flatpickr(input, {
+      minDate: minDate,
+      maxDate: maxDate || null,
+      dateFormat: 'Y-m-d',
+      appendTo: document.body,
+      static: false, // Keep as popup (not inline)
+      clickOpens: true,
+      allowInput: false,
+      defaultDate: null,
+      inline: false,
+      disableMobile: true,
+      ignoredFocusElements: [],
+      disable: [
+        (date: Date) => {
+          if (allowedDays.length === 0) return false;
+          const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+          const dayName = dayNames[date.getDay()];
+          const allowedLower = allowedDays.map(d => d.toLowerCase());
+          const shouldDisable = !allowedLower.includes(dayName);
+
+          return shouldDisable;
+        }
+      ],
+      onOpen: (_selectedDates: Date[], _dateStr: string, instance: any) => {
+        setTimeout(() => {
+          const calendarContainer = instance.calendarContainer;
+          const inputRect = input.getBoundingClientRect();
+
+          if (calendarContainer) {
+            calendarContainer.className = calendarContainer.className
+              .split(' ')
+              .filter((cls: string) => !cls.startsWith('arrow'))
+              .join(' ');
+            
+            if (inputRect.width === 0 || inputRect.height === 0) {
+              console.error('[Zapiet] Input has zero dimensions, cannot position calendar');
+              return;
+            }
+            
+            let leftPos = Math.max(10, Math.min(inputRect.left, window.innerWidth - 320));
+            let topPos = inputRect.bottom + 4;
+            
+            if (topPos + 320 > window.innerHeight) {
+              topPos = Math.max(10, inputRect.top - 324);
+            }
+            
+            if (leftPos < 0 || leftPos > window.innerWidth || topPos < 0 || topPos > window.innerHeight) {
+              leftPos = Math.max(10, (window.innerWidth - 320) / 2);
+              topPos = Math.max(10, (window.innerHeight - 320) / 2);
+            }
+            
+            calendarContainer.style.cssText = `
+              position: fixed !important;
+              left: ${leftPos}px !important;
+              top: ${topPos}px !important;
+              right: auto !important;
+              bottom: auto !important;
+              z-index: 2147483647 !important;
+              display: block !important;
+              visibility: visible !important;
+              opacity: 1 !important;
+              pointer-events: auto !important;
+              transform: none !important;
+              margin: 0 !important;
+              max-height: ${Math.min(320, window.innerHeight - topPos - 20)}px !important;
+              overflow: auto !important;
+            `;
+
+            void calendarContainer.offsetHeight;
+          }
+        }, 50); // Increased timeout to 50ms to ensure flatpickr is done
+      },
+      onChange: (selectedDates: Date[], dateStr: string) => {
+        const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
+        if (dateAttr) dateAttr.value = dateStr;
+        
+        if (this.deliveryLocationsForPostal && this.deliveryLocationsForPostal.length > 0 && dateStr) {
+          const loc = this.deliveryLocationsForPostal[0];
+          const timeSlots = this.getTimeSlotsForDay(loc, false, dateStr);
+          this.populateTimeSlots('zapiet-delivery-time', timeSlots);
+        }
+        
+        const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
+        if (dateStr && deliveryTimeField) {
+          deliveryTimeField.parentElement!.style.display = 'flex';
+        }
+        
+        this.updateCartAttributes();
+      }
+    });
+
+    input.style.cursor = 'pointer';
+    input.setAttribute('readonly', 'readonly');
   }
 
   private initWidget(data: WidgetData): void {
@@ -368,6 +596,33 @@ class ZapietWidget {
 
     const datetimeDiv = this.getRootElement<HTMLElement>('#zapiet-pickup-datetime');
     if (datetimeDiv) datetimeDiv.style.display = 'block';
+
+    const pickupDate = this.getRootElement<HTMLInputElement>('#zapiet-pickup-date');
+    if (pickupDate) {
+      const allowedDaysJson = location.pickupDays || '[]';
+      let allowedDays: string[] = [];
+      try { allowedDays = JSON.parse(allowedDaysJson); } catch(e) {}
+      
+      pickupDate.dataset.allowedDays = JSON.stringify(allowedDays);
+
+      const minDate = new Date();
+      minDate.setDate(minDate.getDate() + (location.pickupPreparationDays || 1));
+
+      let maxDate: Date | undefined;
+      if (location.pickupMaxDaysInAdvance) {
+        maxDate = new Date();
+        maxDate.setDate(maxDate.getDate() + location.pickupMaxDaysInAdvance);
+      }
+
+      this.initPickupDatePicker(pickupDate, allowedDays, minDate, maxDate, location);
+
+      if (pickupDate.value) {
+          const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
+          if (dateAttr) dateAttr.value = pickupDate.value;
+          const timeSlotsForDay = this.getTimeSlotsForDay(location, true, pickupDate.value);
+          this.populateTimeSlots('zapiet-pickup-time', timeSlotsForDay);
+      }
+    }
 
     this.populateTimeSlots('zapiet-pickup-time');
     this.calculatePickupRate(location.id, rates);
@@ -575,7 +830,39 @@ class ZapietWidget {
       
       this.setupProgressiveDelivery(data);
       
-      this.updateDeliveryDateMinimum();
+      const location = matchingLocations[0];
+      if (location && deliveryDateField) {
+        const allowedDaysJson = location.deliveryDays || '[]';
+        let allowedDays: string[] = [];
+        try { allowedDays = JSON.parse(allowedDaysJson); } catch(e) {}
+        
+        deliveryDateField.dataset.allowedDays = JSON.stringify(allowedDays);
+
+        const minDateStr = this.getDeliveryMinDate();
+        const minDate = new Date(minDateStr);
+        
+        let maxDate: Date | undefined;
+        if (location.deliveryMaxDaysInAdvance) {
+          maxDate = new Date();
+          maxDate.setDate(maxDate.getDate() + location.deliveryMaxDaysInAdvance);
+        }
+
+        setTimeout(() => {
+          this.initDeliveryDatePicker(deliveryDateField, allowedDays, minDate, maxDate);
+        }, 100);
+        
+        if (deliveryDateField.value) {
+            const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
+            if (dateAttr) dateAttr.value = deliveryDateField.value;
+            
+             if (this.deliveryLocationsForPostal && this.deliveryLocationsForPostal.length > 0) {
+                const loc = this.deliveryLocationsForPostal[0];
+                const timeSlotsForDay = this.getTimeSlotsForDay(loc, false, deliveryDateField.value);
+                this.populateTimeSlots('zapiet-delivery-time', timeSlotsForDay);
+             }
+        }
+      }
+
     } else {
       resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>Sorry, we do not deliver to your postal code.</div>';
       this.deliveryLocationsForPostal = null;
@@ -753,7 +1040,7 @@ class ZapietWidget {
   private getDeliveryMinDate(): string {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    let minDate = tomorrow.toISOString().split('T')[0];
+    let minDate = this.toLocalDateString(tomorrow);
 
     let enableNextWeekOnly = this.data?.settings.enableDeliveryNextWeekOnly || false;
     let sameWeekDaysJson = this.data?.settings.deliveryNextWeekSameWeekDays || '[]';
@@ -787,7 +1074,7 @@ class ZapietWidget {
       if (!sameWeekDays.includes(currentDayName)) {
         const nextWeek = new Date();
         nextWeek.setDate(today.getDate() + 7);
-        minDate = nextWeek.toISOString().split('T')[0];
+        minDate = this.toLocalDateString(nextWeek);
       }
     }
     
@@ -803,48 +1090,6 @@ class ZapietWidget {
   }
 
   private setupDateMinimums(): void {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const pickupDate = this.getRootElement<HTMLInputElement>('#zapiet-pickup-date');
-    const deliveryDate = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
-
-    if (pickupDate) {
-      pickupDate.min = tomorrow.toISOString().split('T')[0];
-      pickupDate.addEventListener('change', () => {
-        const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
-        if (dateAttr) dateAttr.value = pickupDate.value;
-        
-        const selectedLocationEl = this.root.querySelector('.zapiet-location-item.selected');
-        if (selectedLocationEl) {
-          const locationId = selectedLocationEl.getAttribute('data-location-id');
-          const location = this.eligiblePickupLocations.find(loc => loc.id === locationId);
-          if (location) {
-            const timeSlotsForDay = this.getTimeSlotsForDay(location, true, pickupDate.value);
-            this.populateTimeSlots('zapiet-pickup-time', timeSlotsForDay);
-          }
-        }
-        
-        this.updateCartAttributes();
-      });
-    }
-
-    if (deliveryDate) {
-      deliveryDate.min = this.getDeliveryMinDate();
-      deliveryDate.addEventListener('change', () => {
-        const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
-        if (dateAttr) dateAttr.value = deliveryDate.value;
-        
-        if (this.deliveryLocationsForPostal && this.deliveryLocationsForPostal.length > 0) {
-          const location = this.deliveryLocationsForPostal[0];
-          const timeSlotsForDay = this.getTimeSlotsForDay(location, false, deliveryDate.value);
-          this.populateTimeSlots('zapiet-delivery-time', timeSlotsForDay);
-        }
-        
-        this.updateCartAttributes();
-      });
-    }
-
     const pickupTime = this.getRootElement<HTMLSelectElement>('#zapiet-pickup-time');
     const deliveryTime = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
 
