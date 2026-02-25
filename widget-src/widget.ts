@@ -81,6 +81,7 @@ class ZapietWidget {
   private deliveryLocationsForPostal: Location[] | null = null;
   private pickupDatePicker: any = null;
   private deliveryDatePicker: any = null;
+  private isSetup = false;
 
   constructor(rootId: string) {
     const rootElement = document.getElementById(rootId);
@@ -228,6 +229,92 @@ class ZapietWidget {
     return `${year}-${month}-${day}`;
   }
 
+  private getCalendarAppendTarget(): HTMLElement {
+    const PORTAL_ID = 'zapiet-cal-portal';
+    let portal = document.getElementById(PORTAL_ID);
+    if (!portal) {
+      portal = document.createElement('div');
+      portal.id = PORTAL_ID;
+      portal.style.cssText =
+        'position:fixed;inset:0;width:0;height:0;overflow:visible;' +
+        'background:transparent;border:none;padding:0;margin:0;pointer-events:none;';
+      document.body.appendChild(portal);
+
+      if (typeof (portal as any).showPopover === 'function') {
+        portal.setAttribute('popover', 'manual');
+        (portal as any).showPopover();
+      }
+    }
+    return portal;
+  }
+
+  private positionCalendar(calendarContainer: HTMLElement, input: HTMLInputElement): void {
+    calendarContainer.className = calendarContainer.className
+      .split(' ')
+      .filter((cls: string) => !cls.startsWith('arrow'))
+      .join(' ');
+
+    const inputRect = input.getBoundingClientRect();
+    if (inputRect.width === 0 || inputRect.height === 0) return;
+
+    let cbLeft = 0;
+    let cbTop = 0;
+    for (
+      let el: HTMLElement | null = calendarContainer.parentElement;
+      el && el !== document.documentElement;
+      el = el.parentElement
+    ) {
+      const cs = getComputedStyle(el);
+      const hasContainingBlock =
+        cs.transform !== 'none' ||
+        cs.translate !== 'none' ||
+        cs.scale !== 'none' ||
+        cs.rotate !== 'none' ||
+        (cs.filter !== 'none' && cs.filter !== '') ||
+        cs.willChange === 'transform' ||
+        cs.willChange === 'filter';
+      if (hasContainingBlock) {
+        const r = el.getBoundingClientRect();
+        cbLeft = r.left;
+        cbTop = r.top;
+        break;
+      }
+    }
+
+    let vpLeft = Math.max(10, Math.min(inputRect.left, window.innerWidth - 320));
+    let vpTop  = inputRect.bottom + 4;
+
+    if (vpTop + 320 > window.innerHeight) {
+      vpTop = Math.max(10, inputRect.top - 324);
+    }
+    if (vpLeft < 0 || vpLeft > window.innerWidth || vpTop < 0 || vpTop > window.innerHeight) {
+      vpLeft = Math.max(10, (window.innerWidth - 320) / 2);
+      vpTop  = Math.max(10, (window.innerHeight - 320) / 2);
+    }
+
+    const leftPos = vpLeft - cbLeft;
+    const topPos  = vpTop  - cbTop;
+
+    calendarContainer.style.cssText = `
+      position: fixed !important;
+      left: ${leftPos}px !important;
+      top: ${topPos}px !important;
+      right: auto !important;
+      bottom: auto !important;
+      z-index: 2147483647 !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: none !important;
+      margin: 0 !important;
+      max-height: ${Math.min(320, window.innerHeight - vpTop - 20)}px !important;
+      overflow: auto !important;
+    `;
+
+    void calendarContainer.offsetHeight;
+  }
+
   private initPickupDatePicker(input: HTMLInputElement, allowedDays: string[], minDate: Date, maxDate?: Date, location?: Location): void {
     if (this.pickupDatePicker) {
       this.pickupDatePicker.destroy();
@@ -246,8 +333,8 @@ class ZapietWidget {
       minDate: minDate,
       maxDate: maxDate || null,
       dateFormat: 'Y-m-d',
-      appendTo: document.body,
-      static: false, // Keep as popup (not inline)
+      appendTo: this.getCalendarAppendTarget(),
+      static: false,
       clickOpens: true,
       allowInput: false,
       defaultDate: null,
@@ -259,74 +346,36 @@ class ZapietWidget {
           if (allowedDays.length === 0) return false;
           const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           const dayName = dayNames[date.getDay()];
-          const allowedLower = allowedDays.map(d => d.toLowerCase());
-          const shouldDisable = !allowedLower.includes(dayName);
-
-          return shouldDisable;
+          return !allowedDays.map(d => d.toLowerCase()).includes(dayName);
         }
       ],
       onOpen: (_selectedDates: Date[], _dateStr: string, instance: any) => {
         setTimeout(() => {
-          const calendarContainer = instance.calendarContainer;
-          const inputRect = input.getBoundingClientRect();
-
-          if (calendarContainer) {
-            calendarContainer.className = calendarContainer.className
-              .split(' ')
-              .filter((cls: string) => !cls.startsWith('arrow'))
-              .join(' ');
-            
-            if (inputRect.width === 0 || inputRect.height === 0) {
-              console.error('[Zapiet] Input has zero dimensions, cannot position calendar');
-              return;
-            }
-            
-            let leftPos = Math.max(10, Math.min(inputRect.left, window.innerWidth - 320));
-            let topPos = inputRect.bottom + 4;
-            
-            if (topPos + 320 > window.innerHeight) {
-              topPos = Math.max(10, inputRect.top - 324);
-            }
-            
-            if (leftPos < 0 || leftPos > window.innerWidth || topPos < 0 || topPos > window.innerHeight) {
-              leftPos = Math.max(10, (window.innerWidth - 320) / 2);
-              topPos = Math.max(10, (window.innerHeight - 320) / 2);
-            }
-            
-            calendarContainer.style.cssText = `
-              position: fixed !important;
-              left: ${leftPos}px !important;
-              top: ${topPos}px !important;
-              right: auto !important;
-              bottom: auto !important;
-              z-index: 2147483647 !important;
-              display: block !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              pointer-events: auto !important;
-              transform: none !important;
-              margin: 0 !important;
-              max-height: ${Math.min(320, window.innerHeight - topPos - 20)}px !important;
-              overflow: auto !important;
-            `;
-
-            void calendarContainer.offsetHeight;
+          if (instance.calendarContainer && instance.isOpen) {
+            this.positionCalendar(instance.calendarContainer, input);
           }
-        }, 50); // Increased timeout to 50ms to ensure flatpickr is done
+        }, 50);
       },
-      onChange: (selectedDates: Date[], dateStr: string) => {
+      onClose: (_selectedDates: Date[], _dateStr: string, instance: any) => {
+        const cal = instance.calendarContainer;
+        if (cal) {
+          cal.style.display = '';
+          cal.style.visibility = '';
+          cal.style.opacity = '';
+        }
+      },
+      onChange: (_selectedDates: Date[], dateStr: string) => {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = dateStr;
-        
+
         if (location && dateStr) {
           const timeSlots = this.getTimeSlotsForDay(location, true, dateStr);
           this.populateTimeSlots('zapiet-pickup-time', timeSlots);
         }
-        
+
         this.updateCartAttributes();
       }
     });
-
     input.style.cursor = 'pointer';
     input.setAttribute('readonly', 'readonly');
   }
@@ -349,8 +398,8 @@ class ZapietWidget {
       minDate: minDate,
       maxDate: maxDate || null,
       dateFormat: 'Y-m-d',
-      appendTo: document.body,
-      static: false, // Keep as popup (not inline)
+      appendTo: this.getCalendarAppendTarget(),
+      static: false,
       clickOpens: true,
       allowInput: false,
       defaultDate: null,
@@ -362,62 +411,25 @@ class ZapietWidget {
           if (allowedDays.length === 0) return false;
           const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           const dayName = dayNames[date.getDay()];
-          const allowedLower = allowedDays.map(d => d.toLowerCase());
-          const shouldDisable = !allowedLower.includes(dayName);
-
-          return shouldDisable;
+          return !allowedDays.map(d => d.toLowerCase()).includes(dayName);
         }
       ],
       onOpen: (_selectedDates: Date[], _dateStr: string, instance: any) => {
         setTimeout(() => {
-          const calendarContainer = instance.calendarContainer;
-          const inputRect = input.getBoundingClientRect();
-
-          if (calendarContainer) {
-            calendarContainer.className = calendarContainer.className
-              .split(' ')
-              .filter((cls: string) => !cls.startsWith('arrow'))
-              .join(' ');
-            
-            if (inputRect.width === 0 || inputRect.height === 0) {
-              console.error('[Zapiet] Input has zero dimensions, cannot position calendar');
-              return;
-            }
-            
-            let leftPos = Math.max(10, Math.min(inputRect.left, window.innerWidth - 320));
-            let topPos = inputRect.bottom + 4;
-            
-            if (topPos + 320 > window.innerHeight) {
-              topPos = Math.max(10, inputRect.top - 324);
-            }
-            
-            if (leftPos < 0 || leftPos > window.innerWidth || topPos < 0 || topPos > window.innerHeight) {
-              leftPos = Math.max(10, (window.innerWidth - 320) / 2);
-              topPos = Math.max(10, (window.innerHeight - 320) / 2);
-            }
-            
-            calendarContainer.style.cssText = `
-              position: fixed !important;
-              left: ${leftPos}px !important;
-              top: ${topPos}px !important;
-              right: auto !important;
-              bottom: auto !important;
-              z-index: 2147483647 !important;
-              display: block !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              pointer-events: auto !important;
-              transform: none !important;
-              margin: 0 !important;
-              max-height: ${Math.min(320, window.innerHeight - topPos - 20)}px !important;
-              overflow: auto !important;
-            `;
-
-            void calendarContainer.offsetHeight;
+          if (instance.calendarContainer && instance.isOpen) {
+            this.positionCalendar(instance.calendarContainer, input);
           }
-        }, 50); // Increased timeout to 50ms to ensure flatpickr is done
+        }, 50);
       },
-      onChange: (selectedDates: Date[], dateStr: string) => {
+      onClose: (_selectedDates: Date[], _dateStr: string, instance: any) => {
+        const cal = instance.calendarContainer;
+        if (cal) {
+          cal.style.display = '';
+          cal.style.visibility = '';
+          cal.style.opacity = '';
+        }
+      },
+      onChange: (_selectedDates: Date[], dateStr: string) => {
         const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
         if (dateAttr) dateAttr.value = dateStr;
         
@@ -426,12 +438,12 @@ class ZapietWidget {
           const timeSlots = this.getTimeSlotsForDay(loc, false, dateStr);
           this.populateTimeSlots('zapiet-delivery-time', timeSlots);
         }
-        
+
         const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
         if (dateStr && deliveryTimeField) {
           deliveryTimeField.parentElement!.style.display = 'flex';
         }
-        
+
         this.updateCartAttributes();
       }
     });
@@ -514,6 +526,9 @@ class ZapietWidget {
     this.setupDelivery(data);
     this.setupCardSwitching();
     this.setupDateMinimums();
+
+    this.isSetup = true;
+    setTimeout(() => this.updateCartAttributes(), 200);
   }
 
   private showPanel(panelId: string): void {
@@ -1117,44 +1132,63 @@ class ZapietWidget {
     this.updateCartAttributes();
   }
 
-  private async updateCartAttributes(): Promise<void> {
-    const attributes: Record<string, string> = {};
-    
-    const orderNoteInput = document.getElementById('attr-order-note') as HTMLInputElement;
-    const methodInput = document.getElementById('attr-method') as HTMLInputElement;
-    const locationInput = document.getElementById('attr-location') as HTMLInputElement;
-    const dateInput = document.getElementById('attr-date') as HTMLInputElement;
-    const timeInput = document.getElementById('attr-time') as HTMLInputElement;
-    const pickupNoteInput = document.getElementById('attr-pickup-note') as HTMLInputElement;
-    const postalCodeInput = document.getElementById('attr-postal-code') as HTMLInputElement;
-    const deliveryNoteInput = document.getElementById('attr-delivery-note') as HTMLInputElement;
-    
-    if (orderNoteInput?.value) attributes['_zapiet_order_note'] = orderNoteInput.value;
-    if (methodInput?.value) attributes['_zapiet_method'] = methodInput.value;
-    if (locationInput?.value) attributes['_zapiet_location'] = locationInput.value;
-    if (dateInput?.value) attributes['_zapiet_date'] = dateInput.value;
-    if (timeInput?.value) attributes['_zapiet_time'] = timeInput.value;
-    if (pickupNoteInput?.value) attributes['_zapiet_pickup_note'] = pickupNoteInput.value;
-    if (postalCodeInput?.value) attributes['_zapiet_postal_code'] = postalCodeInput.value;
-    if (deliveryNoteInput?.value) attributes['_zapiet_delivery_note'] = deliveryNoteInput.value;
+  private isInsideCartDrawer(): boolean {
+    return !!this.root.closest(
+      'dialog, cart-drawer, .cart-drawer, [id*="cart-drawer"], aside[id*="cart"]'
+    );
+  }
 
-    if (Object.keys(attributes).length === 0) {
+  private collectAttributes(): Record<string, string> {
+    const attributes: Record<string, string> = {};
+    const orderNoteInput   = document.getElementById('attr-order-note')    as HTMLInputElement;
+    const methodInput      = document.getElementById('attr-method')         as HTMLInputElement;
+    const locationInput    = document.getElementById('attr-location')       as HTMLInputElement;
+    const dateInput        = document.getElementById('attr-date')           as HTMLInputElement;
+    const timeInput        = document.getElementById('attr-time')           as HTMLInputElement;
+    const pickupNoteInput  = document.getElementById('attr-pickup-note')    as HTMLInputElement;
+    const postalCodeInput  = document.getElementById('attr-postal-code')    as HTMLInputElement;
+    const deliveryNoteInput = document.getElementById('attr-delivery-note') as HTMLInputElement;
+
+    if (orderNoteInput?.value)    attributes['_zapiet_order_note']    = orderNoteInput.value;
+    if (methodInput?.value)       attributes['_zapiet_method']         = methodInput.value;
+    if (locationInput?.value)     attributes['_zapiet_location']       = locationInput.value;
+    if (dateInput?.value)         attributes['_zapiet_date']           = dateInput.value;
+    if (timeInput?.value)         attributes['_zapiet_time']           = timeInput.value;
+    if (pickupNoteInput?.value)   attributes['_zapiet_pickup_note']    = pickupNoteInput.value;
+    if (postalCodeInput?.value)   attributes['_zapiet_postal_code']    = postalCodeInput.value;
+    if (deliveryNoteInput?.value) attributes['_zapiet_delivery_note']  = deliveryNoteInput.value;
+    return attributes;
+  }
+
+  private async updateCartAttributes(): Promise<void> {
+    if (!this.isSetup) return;
+
+    const attributes = this.collectAttributes();
+    if (Object.keys(attributes).length === 0) return;
+
+    try {
+      localStorage.setItem('zapiet_pending', JSON.stringify(attributes));
+    } catch (_) {}
+    (window as any).zapietPendingAttributes = attributes;
+
+    if (this.isInsideCartDrawer()) {
+      document.dispatchEvent(new CustomEvent('zapiet:cart-updated', { detail: attributes }));
       return;
     }
 
     try {
+      (window as any).zapietOwnCartUpdate = true;
       const response = await fetch('/cart/update.js', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attributes }),
       });
-
+      setTimeout(() => { (window as any).zapietOwnCartUpdate = false; }, 2000);
       if (response.ok) {
         document.dispatchEvent(new CustomEvent('zapiet:cart-updated', { detail: attributes }));
       }
     } catch (error) {
+      setTimeout(() => { (window as any).zapietOwnCartUpdate = false; }, 2000);
       console.error('Error updating cart attributes:', error);
     }
   }

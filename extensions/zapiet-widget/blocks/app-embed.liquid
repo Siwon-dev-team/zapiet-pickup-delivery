@@ -284,6 +284,13 @@
   }
 
   function injectWidget(forceDrawer = false) {
+    // Never re-inject while our own cart update is in-flight.
+    // Horizon re-renders the cart section after every /cart/update.js call, which
+    // removes our widget from the DOM.  Without this guard the observer would
+    // instantly re-inject a new widget, that widget would POST again, causing an
+    // endless loop.
+    if (window.zapietOwnCartUpdate) return;
+
     cleanupDuplicateWidgets();
     
     const existing = document.getElementById('zapiet-widget-root');
@@ -405,49 +412,72 @@
   }
 
   function watchCartDrawer() {
+    const cartOpenClasses = ['cart-open', 'cart-is-open', 'drawer--open', 'js-cart-open', 'overflow-hidden'];
+
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && 
-            (mutation.attributeName === 'open' || 
-             mutation.attributeName === 'class' ||
-             mutation.attributeName === 'aria-hidden')) {
+        if (mutation.type === 'attributes') {
           const target = mutation.target;
-          if (target.hasAttribute('open') || 
+          const attr = mutation.attributeName;
+
+          // Cart/drawer element became open
+          if (attr === 'open' || attr === 'class' || attr === 'aria-hidden' || attr === 'aria-expanded' || attr === 'data-state') {
+            const isOpen = target.hasAttribute('open') ||
               target.classList.contains('active') ||
-              target.getAttribute('aria-hidden') === 'false') {
-            setTimeout(() => injectWidget(true), 200);
+              target.classList.contains('is-open') ||
+              target.getAttribute('aria-hidden') === 'false' ||
+              target.getAttribute('aria-expanded') === 'true' ||
+              target.getAttribute('data-state') === 'open';
+            if (isOpen) {
+              setTimeout(() => injectWidget(true), 200);
+            }
+          }
+
+          // Body class change — many themes add a class to <body> when cart opens
+          if (target === document.body && attr === 'class') {
+            const bodyHasCartClass = cartOpenClasses.some(cls => document.body.classList.contains(cls));
+            if (bodyHasCartClass) {
+              setTimeout(() => injectWidget(true), 200);
+            }
           }
         }
-        
+
         if (mutation.addedNodes.length > 0) {
           mutation.addedNodes.forEach(node => {
-            if (node.nodeType === 1 && 
-                (node.matches('cart-drawer') || 
-                 node.matches('.cart-drawer') ||
-                 node.matches('[id*="cart"]'))) {
-              setTimeout(() => injectWidget(true), 200);
+            if (node.nodeType === 1) {
+              const el = node;
+              if (el.matches('cart-drawer, .cart-drawer, [id*="cart-drawer"], [id*="cart-notification"], dialog[id*="cart"]')) {
+                setTimeout(() => injectWidget(true), 200);
+              }
             }
           });
         }
       }
     });
 
-    const cartElements = document.querySelectorAll('cart-drawer, .cart-drawer, [id*="cart-drawer"], aside[id*="cart"]');
+    // Observe known cart/drawer elements for attribute changes
+    const cartElements = document.querySelectorAll(
+      'cart-drawer, .cart-drawer, [id*="cart-drawer"], aside[id*="cart"], dialog[id*="cart"]'
+    );
     cartElements.forEach(el => {
       observer.observe(el, {
         attributes: true,
+        attributeFilter: ['open', 'class', 'aria-hidden', 'aria-expanded', 'data-state'],
         childList: true,
         subtree: true
       });
     });
 
+    // Observe body for class changes and new cart elements being added to DOM
     observer.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class']
     });
   }
 
-  document.addEventListener('cart:updated', function() {
+  function resetAndInjectWidget() {
     window.zapietWidgetInjected = false;
     window.zapietInjecting = false;
     const existingWidget = document.getElementById('zapiet-widget-root');
@@ -455,19 +485,57 @@
       existingWidget.remove();
     }
     setTimeout(() => injectWidget(true), 300);
+  }
+
+  // Cart events dispatched by various themes.
+  // IMPORTANT: we must NOT call resetAndInjectWidget() for cart:updated/cart:change
+  // because the Horizon theme fires those events after our OWN /cart/update.js call,
+  // which would destroy the widget mid-interaction (e.g. while a date picker is open).
+  // Instead, only inject if the widget is genuinely missing.
+  ['cart:updated', 'cart:open', 'cart:refresh', 'cart:change', 'cart-update',
+   'theme:cart:updated', 'ajaxCart:updated', 'CartDrawer:open'].forEach(function(evt) {
+    document.addEventListener(evt, function() {
+      // Skip if this event was triggered by our own cart attribute update
+      if (window.zapietOwnCartUpdate) return;
+      if (!document.getElementById('zapiet-widget-root')) {
+        setTimeout(function() { injectWidget(true); }, 300);
+      }
+    });
   });
 
-  document.addEventListener('cart:open', function() {
-    if (!document.getElementById('zapiet-widget-root')) {
-      setTimeout(() => injectWidget(true), 300);
-    }
-  });
+  // Intercept fetch calls to /cart/add.js and /cart/update.js so we detect
+  // when an item is added via AJAX (which opens the cart drawer)
+  (function() {
+    var _origFetch = window.fetch;
+    window.fetch = function() {
+      var args = Array.prototype.slice.call(arguments);
+      var url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+      var result = _origFetch.apply(window, args);
+      if (url && url.indexOf('/cart/add') !== -1) {
+        result.then(function() {
+          setTimeout(function() { resetAndInjectWidget(); }, 600);
+        }).catch(function() {});
+      }
+      return result;
+    };
 
-  document.addEventListener('cart:refresh', function() {
-    if (!document.getElementById('zapiet-widget-root')) {
-      setTimeout(() => injectWidget(true), 300);
-    }
-  });
+    // Also intercept XHR for themes that don't use fetch
+    var _origOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+      this._zapietUrl = url;
+      return _origOpen.apply(this, arguments);
+    };
+    var _origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function() {
+      var xhr = this;
+      if (xhr._zapietUrl && xhr._zapietUrl.indexOf('/cart/add') !== -1) {
+        xhr.addEventListener('load', function() {
+          setTimeout(function() { resetAndInjectWidget(); }, 600);
+        });
+      }
+      return _origSend.apply(this, arguments);
+    };
+  })();
 
   function startInjection() {
     injectWidget();
@@ -480,6 +548,78 @@
       setTimeout(() => cleanupDuplicateWidgets(), 1000);
     }, 2000);
   }
+
+  // ---------------------------------------------------------------------------
+  // Attribute-flush helpers
+  // ---------------------------------------------------------------------------
+
+  // When the widget is inside the cart drawer it saves attributes to
+  // localStorage (and window.zapietPendingAttributes) instead of POSTing to
+  // /cart/update.js so that Horizon's cart-section re-render loop is avoided.
+  // The two helpers below flush those saved attributes at the right moments.
+
+  function flushPendingAttributes(onDone) {
+    var raw = null;
+    try { raw = localStorage.getItem('zapiet_pending'); } catch(_) {}
+    var attrs = null;
+    try { attrs = raw ? JSON.parse(raw) : null; } catch(_) {}
+    if (!attrs || Object.keys(attrs).length === 0) {
+      if (onDone) onDone();
+      return;
+    }
+    fetch('/cart/update.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attributes: attrs })
+    }).then(function() {
+      try { localStorage.removeItem('zapiet_pending'); } catch(_) {}
+      window.zapietPendingAttributes = {};
+      if (onDone) onDone();
+    }).catch(function() {
+      if (onDone) onDone();
+    });
+  }
+
+  // 1. Intercept checkout button clicks from the cart drawer so we can flush
+  //    pending attributes before Shopify's checkout page loads.
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    if (!target) return;
+    var btn = target.closest
+      ? target.closest('a[href*="/checkout"], [name="checkout"], [data-cart-checkout], button[id*="checkout"]')
+      : null;
+    if (!btn) return;
+
+    var raw = null;
+    try { raw = localStorage.getItem('zapiet_pending'); } catch(_) {}
+    if (!raw) return; // nothing to flush
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    flushPendingAttributes(function() {
+      // Navigate / submit after flush
+      if (btn.tagName === 'A' && btn.href) {
+        window.location.href = btn.href;
+      } else if (btn.form) {
+        // Re-click without our listener
+        btn.setAttribute('data-zapiet-flushed', '1');
+        btn.click();
+        btn.removeAttribute('data-zapiet-flushed');
+      } else {
+        window.location.href = '/checkout';
+      }
+    });
+  }, true);
+
+  // 2. On the cart page: flush any attributes that were saved while the user
+  //    was in the cart drawer (e.g. they opened the drawer, selected a date,
+  //    then navigated to /cart instead of going straight to checkout).
+  if (window.location.pathname === '/cart') {
+    flushPendingAttributes(null);
+  }
+
+  // ---------------------------------------------------------------------------
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startInjection);
@@ -494,12 +634,12 @@
   #zapiet-widget-root {
     max-height: 60vh;
     overflow-y: auto;
+    overflow-x: visible;
     padding: 20px;
     padding-bottom: 24px;
     background: #fff;
     position: relative;
     z-index: 30;
-    isolation: isolate;
     pointer-events: auto;
   }
 
