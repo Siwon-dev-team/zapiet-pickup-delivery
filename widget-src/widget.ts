@@ -236,7 +236,7 @@ class ZapietWidget {
       portal = document.createElement('div');
       portal.id = PORTAL_ID;
       portal.style.cssText =
-        'position:fixed;inset:0;width:0;height:0;overflow:visible;' +
+        'position:fixed;top:0;left:0;width:0;height:0;overflow:visible;' +
         'background:transparent;border:none;padding:0;margin:0;pointer-events:none;';
       document.body.appendChild(portal);
 
@@ -350,18 +350,32 @@ class ZapietWidget {
         }
       ],
       onOpen: (_selectedDates: Date[], _dateStr: string, instance: any) => {
-        setTimeout(() => {
-          if (instance.calendarContainer && instance.isOpen) {
-            this.positionCalendar(instance.calendarContainer, input);
-          }
-        }, 50);
+        if (instance.calendarContainer) {
+          this.positionCalendar(instance.calendarContainer, input);
+          setTimeout(() => {
+            if (instance.calendarContainer && instance.isOpen) {
+              this.positionCalendar(instance.calendarContainer, input);
+            }
+          }, 50);
+        }
       },
       onClose: (_selectedDates: Date[], _dateStr: string, instance: any) => {
         const cal = instance.calendarContainer;
         if (cal) {
+          cal.style.position = '';
+          cal.style.left = '';
+          cal.style.top = '';
+          cal.style.right = '';
+          cal.style.bottom = '';
           cal.style.display = '';
           cal.style.visibility = '';
           cal.style.opacity = '';
+          cal.style.zIndex = '';
+          cal.style.pointerEvents = '';
+          cal.style.transform = '';
+          cal.style.margin = '';
+          cal.style.maxHeight = '';
+          cal.style.overflow = '';
         }
       },
       onChange: (_selectedDates: Date[], dateStr: string) => {
@@ -415,18 +429,32 @@ class ZapietWidget {
         }
       ],
       onOpen: (_selectedDates: Date[], _dateStr: string, instance: any) => {
-        setTimeout(() => {
-          if (instance.calendarContainer && instance.isOpen) {
-            this.positionCalendar(instance.calendarContainer, input);
-          }
-        }, 50);
+        if (instance.calendarContainer) {
+          this.positionCalendar(instance.calendarContainer, input);
+          setTimeout(() => {
+            if (instance.calendarContainer && instance.isOpen) {
+              this.positionCalendar(instance.calendarContainer, input);
+            }
+          }, 50);
+        }
       },
       onClose: (_selectedDates: Date[], _dateStr: string, instance: any) => {
         const cal = instance.calendarContainer;
         if (cal) {
+          cal.style.position = '';
+          cal.style.left = '';
+          cal.style.top = '';
+          cal.style.right = '';
+          cal.style.bottom = '';
           cal.style.display = '';
           cal.style.visibility = '';
           cal.style.opacity = '';
+          cal.style.zIndex = '';
+          cal.style.pointerEvents = '';
+          cal.style.transform = '';
+          cal.style.margin = '';
+          cal.style.maxHeight = '';
+          cal.style.overflow = '';
         }
       },
       onChange: (_selectedDates: Date[], dateStr: string) => {
