@@ -326,14 +326,13 @@ class ZapietWidget {
     }
 
     if (typeof (window as any).flatpickr === 'undefined') {
-      console.error('[Zapiet] Flatpickr not loaded yet. Retrying in 500ms...');
       setTimeout(() => {
         this.initPickupDatePicker(input, allowedDays, minDate, maxDate, location);
       }, 500);
       return;
     }
 
-    // @ts-ignore - flatpickr is loaded via CDN
+    // @ts-ignore
     this.pickupDatePicker = flatpickr(input, {
       minDate: minDate,
       maxDate: maxDate || null,
@@ -405,14 +404,13 @@ class ZapietWidget {
     }
 
     if (typeof (window as any).flatpickr === 'undefined') {
-      console.error('[Zapiet] Flatpickr not loaded yet. Retrying in 500ms...');
       setTimeout(() => {
         this.initDeliveryDatePicker(input, allowedDays, minDate, maxDate);
       }, 500);
       return;
     }
 
-    // @ts-ignore - flatpickr is loaded via CDN
+    // @ts-ignore
     this.deliveryDatePicker = flatpickr(input, {
       minDate: minDate,
       maxDate: maxDate || null,

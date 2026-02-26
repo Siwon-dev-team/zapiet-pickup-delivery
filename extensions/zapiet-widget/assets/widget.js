@@ -204,7 +204,6 @@
         this.pickupDatePicker.destroy();
       }
       if (typeof window.flatpickr === "undefined") {
-        console.error("[Zapiet] Flatpickr not loaded yet. Retrying in 500ms...");
         setTimeout(() => {
           this.initPickupDatePicker(input, allowedDays, minDate, maxDate, location);
         }, 500);
@@ -279,7 +278,6 @@
         this.deliveryDatePicker.destroy();
       }
       if (typeof window.flatpickr === "undefined") {
-        console.error("[Zapiet] Flatpickr not loaded yet. Retrying in 500ms...");
         setTimeout(() => {
           this.initDeliveryDatePicker(input, allowedDays, minDate, maxDate);
         }, 500);
