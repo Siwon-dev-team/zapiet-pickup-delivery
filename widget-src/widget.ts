@@ -230,6 +230,11 @@ class ZapietWidget {
   }
 
   private getCalendarAppendTarget(): HTMLElement {
+    const dialog = this.root.closest<HTMLElement>('dialog');
+    if (dialog) {
+      return dialog;
+    }
+
     const PORTAL_ID = 'zapiet-cal-portal';
     let portal = document.getElementById(PORTAL_ID);
     if (!portal) {

@@ -200,29 +200,28 @@
   }
   
   function injectHiddenInputsIntoCartForm() {
-    const cartForm = document.querySelector('form[action="/cart"]');
-    if (!cartForm) return;
-    
     if (document.getElementById('attr-order-note')) return;
-    
-    const hiddenInputsHTML = `
-      <input type="hidden" name="attributes[Order Note]" id="attr-order-note" value="" />
-      <input type="hidden" name="attributes[Method]" id="attr-method" value="" />
-      <input type="hidden" name="attributes[Pickup Location]" id="attr-location" value="" />
-      <input type="hidden" name="attributes[Pickup Date]" id="attr-date" value="" />
-      <input type="hidden" name="attributes[Pickup Time]" id="attr-time" value="" />
-      <input type="hidden" name="attributes[Pickup Note]" id="attr-pickup-note" value="" />
-      <input type="hidden" name="attributes[Delivery Address]" id="attr-delivery-address" value="" />
-      <input type="hidden" name="attributes[Postal Code]" id="attr-postal-code" value="" />
-      <input type="hidden" name="attributes[Delivery Note]" id="attr-delivery-note" value="" />
-    `;
-    
+
+    const cartForm = document.querySelector('form[action="/cart"]');
+    const parent = cartForm || document.body;
+    const isForm = !!cartForm;
+
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = hiddenInputsHTML;
     tempDiv.style.display = 'none';
     tempDiv.id = 'zapiet-hidden-inputs';
-    
-    cartForm.appendChild(tempDiv);
+    tempDiv.innerHTML = `
+      <input type="hidden" ${isForm ? 'name="attributes[Order Note]"' : ''} id="attr-order-note" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Method]"' : ''} id="attr-method" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Pickup Location]"' : ''} id="attr-location" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Pickup Date]"' : ''} id="attr-date" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Pickup Time]"' : ''} id="attr-time" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Pickup Note]"' : ''} id="attr-pickup-note" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Delivery Address]"' : ''} id="attr-delivery-address" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Postal Code]"' : ''} id="attr-postal-code" value="" />
+      <input type="hidden" ${isForm ? 'name="attributes[Delivery Note]"' : ''} id="attr-delivery-note" value="" />
+    `;
+
+    parent.appendChild(tempDiv);
   }
 
   function initWidgetWhenReady(attempt = 0) {
@@ -1046,7 +1045,8 @@
               node.nodeType === 1 &&
               node.classList &&
               node.classList.contains('flatpickr-calendar') &&
-              !portal.contains(node)
+              !portal.contains(node) &&
+              !node.closest('dialog')
             ) {
               portal.appendChild(node);
             }
