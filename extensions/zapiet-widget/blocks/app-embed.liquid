@@ -662,6 +662,7 @@
     border-top: 1px solid #e5e7eb;
     border-radius: 0;
     margin: 0;
+    max-height: none !important;
     overflow-y: visible !important;
     overflow-x: visible !important;
   }
@@ -979,7 +980,7 @@
     z-index: 2147483647 !important;
   }
 
-  /* Ensure flatpickr is above ALL possible overlays */
+  #zapiet-cal-portal .flatpickr-calendar,
   body > .flatpickr-calendar {
     z-index: 2147483647 !important;
   }
@@ -1019,22 +1020,56 @@
 <link rel="stylesheet" href="{{ 'widget.css' | asset_url }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script>
-  // Load flatpickr first, then load the widget
   (function() {
+    function setupCalendarPortal() {
+      var PORTAL_ID = 'zapiet-cal-portal';
+      if (document.getElementById(PORTAL_ID)) return;
+
+      var portal = document.createElement('div');
+      portal.id = PORTAL_ID;
+      portal.style.cssText =
+        'position:fixed;top:0;left:0;width:0;height:0;overflow:visible;' +
+        'background:transparent;border:none;padding:0;margin:0;pointer-events:none;';
+      document.body.appendChild(portal);
+
+      if (typeof portal.showPopover === 'function') {
+        portal.setAttribute('popover', 'manual');
+        portal.showPopover();
+      }
+
+      var calObs = new MutationObserver(function(mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          var added = mutations[i].addedNodes;
+          for (var j = 0; j < added.length; j++) {
+            var node = added[j];
+            if (
+              node.nodeType === 1 &&
+              node.classList &&
+              node.classList.contains('flatpickr-calendar') &&
+              !portal.contains(node)
+            ) {
+              portal.appendChild(node);
+            }
+          }
+        }
+      });
+      calObs.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function loadWidget() {
+      var widgetScript = document.createElement('script');
+      widgetScript.src = '{{ 'widget.js' | asset_url }}';
+      document.body.appendChild(widgetScript);
+    }
+
     var flatpickrScript = document.createElement('script');
     flatpickrScript.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
     flatpickrScript.onload = function() {
-      // Now load the widget
-      var widgetScript = document.createElement('script');
-      widgetScript.src = '{{ 'widget.js' | asset_url }}';
-      document.body.appendChild(widgetScript);
+      setupCalendarPortal();
+      loadWidget();
     };
     flatpickrScript.onerror = function() {
-      console.error('[Zapiet] Failed to load Flatpickr from CDN');
-      // Load widget anyway as fallback
-      var widgetScript = document.createElement('script');
-      widgetScript.src = '{{ 'widget.js' | asset_url }}';
-      document.body.appendChild(widgetScript);
+      loadWidget();
     };
     document.head.appendChild(flatpickrScript);
   })();
