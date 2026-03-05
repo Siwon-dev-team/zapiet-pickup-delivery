@@ -1,7 +1,7 @@
 <div id="zapiet-app-embed-root" style="display: none;"
      data-shop="{{ shop.permanent_domain }}"
-     data-enable-cart-page="true"
-     data-enable-cart-drawer="true">
+     data-enable-cart-page="{{ block.settings.enable_cart_page }}"
+     data-enable-cart-drawer="{{ block.settings.enable_cart_drawer }}">
 </div>
 
 <script>
@@ -11,10 +11,19 @@
   if (window.zapietEmbedLoaded) return;
   window.zapietEmbedLoaded = true;
 
+  const embedRoot = document.getElementById('zapiet-app-embed-root');
+  const parseBooleanSetting = (value, fallback) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return fallback;
+  };
+
   const config = {
     shop: "{{ shop.permanent_domain }}",
     cartTotal: {{ cart.total_price | divided_by: 100.0 }},
-    cartWeight: {{ cart.total_weight | divided_by: 1000.0 }}
+    cartWeight: {{ cart.total_weight | divided_by: 1000.0 }},
+    enableCartPage: parseBooleanSetting(embedRoot ? embedRoot.dataset.enableCartPage : '', true),
+    enableCartDrawer: parseBooleanSetting(embedRoot ? embedRoot.dataset.enableCartDrawer : '', true)
   };
 
   const cartPageSelectors = [
@@ -81,20 +90,21 @@
       <div class="zapiet-loading">Loading pickup & delivery options...</div>
       
       <div class="zapiet-content" style="display:none;">
-        <div style="margin-bottom: 20px;">
-          <label class="zapiet-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div class="zapiet-order-note-block">
+          <label class="zapiet-label zapiet-note-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
               <line x1="12" y1="18" x2="12" y2="12"></line>
               <line x1="9" y1="15" x2="15" y2="15"></line>
             </svg>
-            Add order note
+            Order note (optional)
           </label>
           <textarea id="zapiet-order-note" class="zapiet-input" rows="3" placeholder="Add instructions for your order..." style="width: 100%; resize: vertical;"></textarea>
+          <p class="zapiet-helper-text">This note is saved to your cart attributes.</p>
         </div>
         
-        <div style="color: #6b7280; font-size: 13px; margin-bottom: 16px; text-align: center;">
+        <div class="zapiet-meta-note">
           Taxes and shipping calculated at checkout.
         </div>
         
@@ -104,17 +114,20 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
             </svg>
             <span class="zapiet-method-label">Local Delivery</span>
+            <span class="zapiet-method-caption">Deliver to your address</span>
           </button>
           <button type="button" class="zapiet-method-card" data-method="pickup" id="btn-pickup">
             <svg class="zapiet-method-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
             <span class="zapiet-method-label">Store Pickup</span>
+            <span class="zapiet-method-caption">Collect from a location</span>
           </button>
         </div>
         <div class="zapiet-error" id="zapiet-error" style="display:none;"></div>
         
         <div class="zapiet-panel" id="panel-pickup" style="display:none;">
+          <h4 class="zapiet-panel-title">Pickup details</h4>
           <p class="zapiet-instruction">Please select a pickup location:</p>
           <div id="zapiet-location-list" class="zapiet-location-list"></div>
           
@@ -150,6 +163,7 @@
         </div>
 
         <div class="zapiet-panel" id="panel-delivery" style="display:none;">
+          <h4 class="zapiet-panel-title">Delivery details</h4>
           <label class="zapiet-label">
             Enter your postal code to check if you are eligible for local delivery:
           </label>
@@ -197,6 +211,14 @@
     `;
     
     return container;
+  }
+
+  function createWidgetSlot(widget, targetContext) {
+    const slot = document.createElement('div');
+    slot.className = 'zapiet-slot';
+    slot.setAttribute('data-context', targetContext);
+    slot.appendChild(widget);
+    return slot;
   }
   
   function injectHiddenInputsIntoCartForm() {
@@ -280,6 +302,13 @@
         }
       });
     }
+
+    const emptySlots = document.querySelectorAll('.zapiet-slot');
+    emptySlots.forEach(slot => {
+      if (!slot.querySelector('#zapiet-widget-root')) {
+        slot.remove();
+      }
+    });
   }
 
   function injectWidget(forceDrawer = false) {
@@ -316,6 +345,16 @@
       cartDrawer.classList.contains('is-open') ||
       cartDrawer.getAttribute('aria-hidden') === 'false'
     );
+    const drawerContextRequested = !!((forceDrawer || isDrawerOpen) && cartDrawer);
+
+    if (drawerContextRequested && !config.enableCartDrawer) {
+      window.zapietInjecting = false;
+      return;
+    }
+    if (!drawerContextRequested && isCartPage && !config.enableCartPage) {
+      window.zapietInjecting = false;
+      return;
+    }
     
     let injectionPoint = null;
     let targetContext = 'unknown';
@@ -365,31 +404,32 @@
     if (injectionPoint) {
       const widget = createWidgetContainer();
       widget.setAttribute('data-context', targetContext);
+      const widgetSlot = createWidgetSlot(widget, targetContext);
       
       if (targetContext === 'before-checkout') {
         const checkoutButton = injectionPoint.querySelector('[name="checkout"], button[type="submit"], .cart__checkout, [class*="checkout"]');
         if (checkoutButton) {
-          injectionPoint.insertBefore(widget, checkoutButton);
+          injectionPoint.insertBefore(widgetSlot, checkoutButton);
         } else {
-          injectionPoint.appendChild(widget);
+          injectionPoint.appendChild(widgetSlot);
         }
       } else if (targetContext === 'drawer' || injectionPoint.classList.contains('cart-drawer__footer') || injectionPoint.closest('cart-drawer, .cart-drawer, [id*="drawer"]')) {
         if (injectionPoint.firstChild) {
-          injectionPoint.insertBefore(widget, injectionPoint.firstChild);
+          injectionPoint.insertBefore(widgetSlot, injectionPoint.firstChild);
         } else {
-          injectionPoint.appendChild(widget);
+          injectionPoint.appendChild(widgetSlot);
         }
       } else {
         if (injectionPoint.classList.contains('cart__footer') || 
             injectionPoint.classList.contains('cart-footer') ||
             injectionPoint.querySelector('.cart__footer, .cart-footer')) {
           if (injectionPoint.firstChild) {
-            injectionPoint.insertBefore(widget, injectionPoint.firstChild);
+            injectionPoint.insertBefore(widgetSlot, injectionPoint.firstChild);
           } else {
-            injectionPoint.appendChild(widget);
+            injectionPoint.appendChild(widgetSlot);
           }
         } else {
-          injectionPoint.appendChild(widget);
+          injectionPoint.appendChild(widgetSlot);
         }
       }
       
@@ -594,7 +634,26 @@
 </script>
 
 <style>
+  .zapiet-slot {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    clear: both;
+    flex: 1 0 100%;
+    margin: 12px 0;
+    box-sizing: border-box;
+  }
+
+  .zapiet-slot[data-context="drawer"] {
+    margin: 0;
+  }
+
   #zapiet-widget-root {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     max-height: 60vh;
     overflow-y: auto;
     overflow-x: visible;
@@ -602,13 +661,20 @@
     padding-bottom: 24px;
     background: #fff;
     position: relative;
-    z-index: 30;
+    z-index: 1;
     pointer-events: auto;
   }
 
   #zapiet-widget-root,
   #zapiet-widget-root * {
     pointer-events: auto !important;
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  #zapiet-widget-root :where(img, svg, video, canvas) {
+    max-width: 100%;
+    height: auto;
   }
   
   #zapiet-widget-root[data-context="page"] {
@@ -629,6 +695,28 @@
     overflow-y: visible !important;
     overflow-x: visible !important;
   }
+
+  .zapiet-order-note-block {
+    margin-bottom: 16px;
+  }
+
+  .zapiet-note-label {
+    color: #111827;
+  }
+
+  .zapiet-helper-text {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #6b7280;
+  }
+
+  .zapiet-meta-note {
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
   
   @media (max-width: 749px) {
     #zapiet-widget-root {
@@ -646,24 +734,26 @@
   .zapiet-method-selector {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 18px;
   }
   
   .zapiet-method-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 16px 12px;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 16px 14px;
     border: 2px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #fff;
     cursor: pointer;
-    transition: all 0.2s;
-    min-height: 100px;
+    transition: all 0.2s ease;
+    min-height: 116px;
     position: relative;
     z-index: 1;
+    text-align: center;
   }
   
   .zapiet-method-card:hover {
@@ -677,6 +767,12 @@
     border-color: var(--zapiet-primary-color, #008060);
     background: #ecfdf5;
     border-width: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 128, 96, 0.18);
+  }
+
+  .zapiet-method-card:focus-visible {
+    outline: 2px solid var(--zapiet-primary-color, #008060);
+    outline-offset: 2px;
   }
   
   .zapiet-method-icon {
@@ -696,6 +792,13 @@
     font-size: 14px;
     font-weight: 600;
     color: #111827;
+    text-align: center;
+  }
+
+  .zapiet-method-caption {
+    font-size: 12px;
+    line-height: 1.35;
+    color: #6b7280;
     text-align: center;
   }
   
@@ -720,6 +823,22 @@
     color: #374151;
   }
 
+  .zapiet-panel {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #ffffff;
+  }
+
+  .zapiet-panel-title {
+    margin: 0 0 8px;
+    font-size: 15px;
+    line-height: 1.4;
+    font-weight: 600;
+    color: #111827;
+  }
+
   .zapiet-location-list {
     max-height: 240px;
     overflow-y: auto;
@@ -741,6 +860,11 @@
   .zapiet-location-item:hover {
     border-color: var(--zapiet-primary-color, #008060);
     background: #f9fafb;
+  }
+
+  .zapiet-location-item:focus-within {
+    border-color: var(--zapiet-primary-color, #008060);
+    box-shadow: 0 0 0 2px rgba(0, 128, 96, 0.12);
   }
 
   .zapiet-location-item.selected {
@@ -846,12 +970,20 @@
     font-size: 14px;
     width: 100%;
     box-sizing: border-box;
+    background: #fff;
+    color: #111827;
+  }
+
+  .zapiet-input::placeholder,
+  .zapiet-textarea::placeholder {
+    color: #9ca3af;
   }
 
   .zapiet-inline-row {
     display: flex;
     gap: 10px;
     align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .zapiet-inline-row .zapiet-input {
@@ -883,12 +1015,29 @@
     cursor: pointer;
     transition: all 0.2s;
     width: 100%;
+    min-height: 40px;
   }
 
   .zapiet-button:hover {
     background: #006d50;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 128, 96, 0.2);
+  }
+
+  .zapiet-button:focus-visible {
+    outline: 2px solid var(--zapiet-primary-color, #008060);
+    outline-offset: 2px;
+  }
+
+  .zapiet-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .zapiet-delivery-result {
+    margin-top: 12px;
   }
 
   .zapiet-success-msg,
@@ -960,7 +1109,7 @@
 
     .zapiet-method-card {
       padding: 14px 10px;
-      min-height: 90px;
+      min-height: 100px;
     }
 
     .zapiet-method-icon {
@@ -970,6 +1119,10 @@
 
     .zapiet-method-label {
       font-size: 13px;
+    }
+
+    .zapiet-method-caption {
+      font-size: 11px;
     }
 
     .zapiet-location-list {
@@ -1042,6 +1195,23 @@
 {
   "name": "Zapiet App Embed",
   "target": "body",
-  "settings": []
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enable_cart_page",
+      "label": "Show widget on cart page",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_cart_drawer",
+      "label": "Show widget in cart drawer",
+      "default": true
+    },
+    {
+      "type": "paragraph",
+      "content": "Tip: Keep at least one placement enabled so customers can select pickup or delivery before checkout."
+    }
+  ]
 }
 {% endschema %}
