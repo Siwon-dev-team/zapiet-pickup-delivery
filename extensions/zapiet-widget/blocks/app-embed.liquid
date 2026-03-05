@@ -101,11 +101,6 @@
             Order note (optional)
           </label>
           <textarea id="zapiet-order-note" class="zapiet-input" rows="3" placeholder="Add instructions for your order..." style="width: 100%; resize: vertical;"></textarea>
-          <p class="zapiet-helper-text">This note is saved to your cart attributes.</p>
-        </div>
-        
-        <div class="zapiet-meta-note">
-          Taxes and shipping calculated at checkout.
         </div>
         
         <div class="zapiet-method-selector" id="zapiet-method-selector">
@@ -365,17 +360,19 @@
     }
     
     if (!injectionPoint && isCartPage) {
+    const checkoutButton =
+      document.querySelector('.cart__ctas [name="checkout"], .cart__ctas #checkout, .cart__ctas button[name="checkout"]') ||
+      document.querySelector('[name="checkout"], #checkout, button[name="checkout"]');
+
+    const ctas = checkoutButton ? checkoutButton.closest('.cart__ctas') : null;
+
+    if (ctas && checkoutButton) {
+      injectionPoint = ctas;
+      targetContext = 'before-checkout';
+    } else {
       injectionPoint = findInjectionPoint(cartPageSelectors);
       targetContext = 'page';
-      
-      if (!injectionPoint) {
-        const checkoutButton = document.querySelector('[name="checkout"], button[type="submit"], .cart__checkout, [class*="checkout"]');
-        
-        if (checkoutButton && checkoutButton.parentElement) {
-          injectionPoint = checkoutButton.parentElement;
-          targetContext = 'before-checkout';
-        }
-      }
+    }
       
       if (!injectionPoint) {
         const cartForm = document.querySelector('form[action="/cart"]');
@@ -656,7 +653,7 @@
     box-sizing: border-box;
     max-height: 60vh;
     overflow-y: auto;
-    overflow-x: visible;
+    overflow-x: hidden;
     padding: 20px;
     padding-bottom: 24px;
     background: #fff;
@@ -680,6 +677,7 @@
   #zapiet-widget-root[data-context="page"] {
     max-height: none;
     overflow-y: visible;
+    overflow-x: hidden;
     padding: 24px;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
@@ -695,6 +693,17 @@
     overflow-y: visible !important;
     overflow-x: visible !important;
   }
+
+  #zapiet-widget-root[data-context="before-checkout"] {
+  max-height: none;
+  overflow: visible;
+  overflow-x: hidden;
+  margin: 0 0 12px 0;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: none;
+}
 
   .zapiet-order-note-block {
     margin-bottom: 16px;
@@ -1173,7 +1182,7 @@
 
     function loadWidget() {
       var widgetScript = document.createElement('script');
-      widgetScript.src = '{{ 'widget.js' | asset_url }}';
+      widgetScript.src = "{{ 'widget.js' | asset_url }}";
       document.body.appendChild(widgetScript);
     }
 
