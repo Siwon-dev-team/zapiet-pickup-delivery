@@ -14,6 +14,8 @@ interface WidgetSettings {
   preselectLocation: 'first' | '';
   fallbackRate: number;
   deliveryTimeSlots?: string;
+  enablePickupNextWeekOnly?: boolean;
+  pickupNextWeekSameWeekDays?: string;
   enableDeliveryNextWeekOnly?: boolean;
   deliveryNextWeekSameWeekDays?: string;
 }
@@ -28,6 +30,8 @@ interface Location {
   businessHours: string;
   pickupActivationConditions: string;
   deliveryActivationConditions: string;
+  pickupNextWeekOnly?: boolean;
+  pickupNextWeekSameWeekDays?: string;
   deliveryNextWeekOnly?: boolean;
   deliveryNextWeekSameWeekDays?: string;
   pickupTimeSlots?: string;
@@ -650,9 +654,7 @@ class ZapietWidget {
       try { allowedDays = JSON.parse(allowedDaysJson); } catch(e) {}
       
       pickupDate.dataset.allowedDays = JSON.stringify(allowedDays);
-
-      const minDate = new Date();
-      minDate.setDate(minDate.getDate() + (location.pickupPreparationDays || 1));
+      const minDate = this.getPickupMinDate(location);
 
       let maxDate: Date | undefined;
       if (location.pickupMaxDaysInAdvance) {
@@ -1083,6 +1085,46 @@ class ZapietWidget {
     }, true);
   }
 
+  private parseSameWeekDays(sameWeekDaysJson: string): string[] {
+    try {
+      const parsed = JSON.parse(sameWeekDaysJson);
+      return Array.isArray(parsed) ? parsed.map((day) => String(day).toLowerCase()) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  private getPickupMinDate(location: Location): Date {
+    const today = new Date();
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() + (location.pickupPreparationDays || 1));
+
+    let enableNextWeekOnly = this.data?.settings.enablePickupNextWeekOnly || false;
+    let sameWeekDaysJson = this.data?.settings.pickupNextWeekSameWeekDays || '[]';
+
+    if (location.pickupNextWeekOnly) {
+      enableNextWeekOnly = true;
+      sameWeekDaysJson = location.pickupNextWeekSameWeekDays || '[]';
+    }
+
+    if (enableNextWeekOnly) {
+      const currentDay = today.getDay();
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const currentDayName = dayNames[currentDay];
+      const sameWeekDays = this.parseSameWeekDays(sameWeekDaysJson);
+
+      if (!sameWeekDays.includes(currentDayName)) {
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+        if (nextWeek > minDate) {
+          return nextWeek;
+        }
+      }
+    }
+
+    return minDate;
+  }
+
   private getDeliveryMinDate(): string {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1108,14 +1150,7 @@ class ZapietWidget {
       const currentDay = today.getDay();
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const currentDayName = dayNames[currentDay];
-      
-      let sameWeekDays: string[] = [];
-      try {
-        const parsed = JSON.parse(sameWeekDaysJson);
-        sameWeekDays = Array.isArray(parsed) ? parsed.map(d => String(d).toLowerCase()) : [];
-      } catch (e) {
-        sameWeekDays = [];
-      }
+      const sameWeekDays = this.parseSameWeekDays(sameWeekDaysJson);
       
       if (!sameWeekDays.includes(currentDayName)) {
         const nextWeek = new Date();

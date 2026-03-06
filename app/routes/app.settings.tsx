@@ -46,6 +46,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         locationSortOrder: "newest",
         fallbackRate: 0,
         deliveryTimeSlots: "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM",
+        enablePickupNextWeekOnly: false,
+        pickupNextWeekSameWeekDays: "[]",
         enableDeliveryNextWeekOnly: false,
         deliveryNextWeekSameWeekDays: "[]",
       } as any,
@@ -76,6 +78,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     locationSortOrder: formData.get("locationSortOrder") as string,
     fallbackRate: parseFloat(formData.get("fallbackRate") as string) || 0,
     deliveryTimeSlots: formData.get("deliveryTimeSlots") as string,
+    enablePickupNextWeekOnly: formData.get("enablePickupNextWeekOnly") === "on",
+    pickupNextWeekSameWeekDays: formData.get("pickupNextWeekSameWeekDays") as string || "[]",
     enableDeliveryNextWeekOnly: formData.get("enableDeliveryNextWeekOnly") === "on",
     deliveryNextWeekSameWeekDays: formData.get("deliveryNextWeekSameWeekDays") as string || "[]",
   };
@@ -115,6 +119,8 @@ export default function SettingsPage() {
     settings.deliveryTimeSlots ||
       "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM"
   );
+  const [enablePickupNextWeekOnly, setEnablePickupNextWeekOnly] = useState(settings.enablePickupNextWeekOnly || false);
+  const [pickupNextWeekSameWeekDays, setPickupNextWeekSameWeekDays] = useState(settings.pickupNextWeekSameWeekDays || "[]");
   const [enableDeliveryNextWeekOnly, setEnableDeliveryNextWeekOnly] = useState(settings.enableDeliveryNextWeekOnly || false);
   const [deliveryNextWeekSameWeekDays, setDeliveryNextWeekSameWeekDays] = useState(settings.deliveryNextWeekSameWeekDays || "[]");
 
@@ -180,6 +186,69 @@ export default function SettingsPage() {
                   helpText="Allow customers to add pickup notes (written to Shopify order notes)"
                 />
                 <input type="hidden" name="enablePickupNote" value={enablePickupNote ? "on" : "off"} />
+
+                <Divider />
+
+                <Text as="h3" variant="headingSm">Pickup Next Week Only</Text>
+
+                {enablePickupNextWeekOnly && (
+                  <Banner tone="warning">
+                    <p><strong>Important:</strong> This setting can enforce pickup date minimum at 7+ days for non-exception days.</p>
+                  </Banner>
+                )}
+
+                <Checkbox
+                  label="Enable Pickup Next Week Only"
+                  checked={enablePickupNextWeekOnly}
+                  onChange={setEnablePickupNextWeekOnly}
+                  helpText="Force all pickups to be scheduled for next week (except for selected same-week days)"
+                />
+                <input type="hidden" name="enablePickupNextWeekOnly" value={enablePickupNextWeekOnly ? "on" : "off"} />
+
+                {enablePickupNextWeekOnly && (
+                  <>
+                    <Banner tone="info">
+                      <p>Select which days allow same-week pickup. All other days will require next week pickup.</p>
+                    </Banner>
+
+                    <BlockStack gap="200">
+                      <Text as="p" variant="bodyMd" fontWeight="semibold">Same-Week Pickup Days:</Text>
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                        const dayLower = day.toLowerCase();
+                        let selectedDays: string[] = [];
+                        try {
+                          selectedDays = JSON.parse(pickupNextWeekSameWeekDays);
+                        } catch (e) {
+                          selectedDays = [];
+                        }
+                        const isChecked = selectedDays.includes(dayLower);
+
+                        return (
+                          <Checkbox
+                            key={day}
+                            label={day}
+                            checked={isChecked}
+                            onChange={(checked) => {
+                              const current = [...selectedDays];
+                              if (checked) {
+                                if (!current.includes(dayLower)) {
+                                  current.push(dayLower);
+                                }
+                              } else {
+                                const index = current.indexOf(dayLower);
+                                if (index > -1) {
+                                  current.splice(index, 1);
+                                }
+                              }
+                              setPickupNextWeekSameWeekDays(JSON.stringify(current));
+                            }}
+                          />
+                        );
+                      })}
+                    </BlockStack>
+                  </>
+                )}
+                <input type="hidden" name="pickupNextWeekSameWeekDays" value={pickupNextWeekSameWeekDays} />
                 
                 <Divider />
                 

@@ -80,6 +80,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const deliveryBlackoutDates = formData.get("deliveryBlackoutDates") as string;
       const pickupTags = formData.get("pickupTags") as string;
       const deliveryTags = formData.get("deliveryTags") as string;
+      const pickupNextWeekOnly = formData.get("pickupNextWeekOnly") === "true";
+      const pickupNextWeekSameWeekDays = formData.get("pickupNextWeekSameWeekDays") as string;
       const deliveryNextWeekOnly = formData.get("deliveryNextWeekOnly") === "true";
       const deliveryNextWeekSameWeekDays = formData.get("deliveryNextWeekSameWeekDays") as string;
       const notificationEmails = formData.get("notificationEmails") as string;
@@ -120,6 +122,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         deliveryBlackoutDates: deliveryBlackoutDates || "[]",
         pickupTags: pickupTags || "",
         deliveryTags: deliveryTags || "",
+        pickupNextWeekOnly,
+        pickupNextWeekSameWeekDays: pickupNextWeekSameWeekDays || "[]",
         deliveryNextWeekOnly,
         deliveryNextWeekSameWeekDays: deliveryNextWeekSameWeekDays || "[]",
         notificationEmails: notificationEmails || "",
@@ -224,6 +228,8 @@ export default function LocationsPage() {
   const [deliveryBlackoutDates, setDeliveryBlackoutDates] = useState("");
   const [pickupTags, setPickupTags] = useState("");
   const [deliveryTags, setDeliveryTags] = useState("");
+  const [pickupNextWeekOnly, setPickupNextWeekOnly] = useState(false);
+  const [pickupNextWeekSameWeekDays, setPickupNextWeekSameWeekDays] = useState("[]");
   const [deliveryNextWeekOnly, setDeliveryNextWeekOnly] = useState(false);
   const [deliveryNextWeekSameWeekDays, setDeliveryNextWeekSameWeekDays] = useState("[]");
   const [notificationEmails, setNotificationEmails] = useState("");
@@ -342,6 +348,8 @@ export default function LocationsPage() {
       setDeliveryBlackoutDates(parseArray(location.deliveryBlackoutDates).join(", "));
       setPickupTags(location.pickupTags || "");
       setDeliveryTags(location.deliveryTags || "");
+      setPickupNextWeekOnly(location.pickupNextWeekOnly || false);
+      setPickupNextWeekSameWeekDays(location.pickupNextWeekSameWeekDays || "[]");
       setDeliveryNextWeekOnly(location.deliveryNextWeekOnly || false);
       setDeliveryNextWeekSameWeekDays(location.deliveryNextWeekSameWeekDays || "[]");
       setNotificationEmails(location.notificationEmails || "");
@@ -384,6 +392,8 @@ export default function LocationsPage() {
       setDeliveryBlackoutDates("");
       setPickupTags("");
       setDeliveryTags("");
+      setPickupNextWeekOnly(false);
+      setPickupNextWeekSameWeekDays("[]");
       setNotificationEmails("");
       setNotificationPhones("");
       setAllowedProducts("all");
@@ -448,6 +458,8 @@ export default function LocationsPage() {
     formData.append("deliveryBlackoutDates", JSON.stringify(deliveryBlackoutDates.split(",").map(d => d.trim()).filter(Boolean)));
     formData.append("pickupTags", pickupTags);
     formData.append("deliveryTags", deliveryTags);
+    formData.append("pickupNextWeekOnly", String(pickupNextWeekOnly));
+    formData.append("pickupNextWeekSameWeekDays", pickupNextWeekSameWeekDays);
     formData.append("deliveryNextWeekOnly", String(deliveryNextWeekOnly));
     formData.append("deliveryNextWeekSameWeekDays", deliveryNextWeekSameWeekDays);
     formData.append("notificationEmails", notificationEmails);
@@ -1041,6 +1053,54 @@ export default function LocationsPage() {
                 helpText="Comma-separated tags for pickup orders from this location"
                 placeholder="Store Pickup, Click & Collect"
               />
+              <Checkbox
+                label="Enable Pickup Next Week Only (Location Override)"
+                checked={pickupNextWeekOnly}
+                onChange={setPickupNextWeekOnly}
+                helpText="Force pickups from this location to next week only"
+              />
+              {pickupNextWeekOnly && (
+                <>
+                  <Banner tone="info">
+                    <p>Select which days allow same-week pickup. All other days will require next week pickup.</p>
+                  </Banner>
+                  <BlockStack gap="200">
+                    <Text as="p" variant="bodyMd" fontWeight="semibold">Same-Week Pickup Days:</Text>
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                      const dayLower = day.toLowerCase();
+                      let selectedDays: string[] = [];
+                      try {
+                        selectedDays = JSON.parse(pickupNextWeekSameWeekDays);
+                      } catch (e) {
+                        selectedDays = [];
+                      }
+                      const isChecked = selectedDays.includes(dayLower);
+                      
+                      return (
+                        <Checkbox
+                          key={day}
+                          label={day}
+                          checked={isChecked}
+                          onChange={(checked) => {
+                            const current = [...selectedDays];
+                            if (checked) {
+                              if (!current.includes(dayLower)) {
+                                current.push(dayLower);
+                              }
+                            } else {
+                              const index = current.indexOf(dayLower);
+                              if (index > -1) {
+                                current.splice(index, 1);
+                              }
+                            }
+                            setPickupNextWeekSameWeekDays(JSON.stringify(current));
+                          }}
+                        />
+                      );
+                    })}
+                  </BlockStack>
+                </>
+              )}
             </BlockStack>
 
             <BlockStack gap="200">

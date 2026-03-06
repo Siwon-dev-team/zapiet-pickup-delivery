@@ -61,6 +61,8 @@ model Location {
   allowedProducts              String   @default("all")
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
+  pickupNextWeekOnly           Boolean  @default(false)
+  pickupNextWeekSameWeekDays   String   @default("[]")
   deliveryNextWeekOnly         Boolean  @default(false)
   deliveryNextWeekSameWeekDays String   @default("[]")
   pickupTimeSlotsPerDay        String?  @default("{}")
@@ -100,6 +102,8 @@ model Settings {
   locationSortOrder            String  @default("newest")
   fallbackRate                 Float   @default(0)
   deliveryTimeSlots            String  @default("9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM")
+  enablePickupNextWeekOnly     Boolean @default(false)
+  pickupNextWeekSameWeekDays   String  @default("[]")
   enableDeliveryNextWeekOnly   Boolean @default(false)
   deliveryNextWeekSameWeekDays String  @default("[]")
 }
