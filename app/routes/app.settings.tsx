@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation } from "@remix-run/react";
+import { useLoaderData, Form, useNavigation, useActionData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -40,8 +40,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         autoTagDelivery: "",
         enableSecurityCode: true,
         postalCodeValidation: "none",
-        enablePickupNote: false,
-        enableDeliveryNote: false,
+        enablePickupNote: true,
+        enableDeliveryNote: true,
         preselectLocation: "",
         locationSortOrder: "newest",
         fallbackRate: 0,
@@ -60,6 +60,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
+  const enableOrderNote = formData.get("enableOrderNote") === "on";
   
   const data = {
     enablePickup: formData.get("enablePickup") === "on",
@@ -72,8 +73,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     autoTagDelivery: formData.get("autoTagDelivery") as string,
     enableSecurityCode: formData.get("enableSecurityCode") === "on",
     postalCodeValidation: formData.get("postalCodeValidation") as string,
-    enablePickupNote: formData.get("enablePickupNote") === "on",
-    enableDeliveryNote: formData.get("enableDeliveryNote") === "on",
+    enablePickupNote: enableOrderNote,
+    enableDeliveryNote: enableOrderNote,
     preselectLocation: formData.get("preselectLocation") as string,
     locationSortOrder: formData.get("locationSortOrder") as string,
     fallbackRate: parseFloat(formData.get("fallbackRate") as string) || 0,
@@ -90,21 +91,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     create: { ...data, shop: session.shop },
   });
 
-  return json({ success: true });
+  return json({ success: true, message: "Settings saved successfully." });
 };
 
 export default function SettingsPage() {
   const { settings: settingsData } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const settings = settingsData as any;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
-  // Controlled state for all form fields
   const [enablePickup, setEnablePickup] = useState(settings.enablePickup);
   const [enableDelivery, setEnableDelivery] = useState(settings.enableDelivery);
   const [enableSecurityCode, setEnableSecurityCode] = useState(settings.enableSecurityCode);
-  const [enablePickupNote, setEnablePickupNote] = useState(settings.enablePickupNote || false);
-  const [enableDeliveryNote, setEnableDeliveryNote] = useState(settings.enableDeliveryNote || false);
+  const [enableOrderNote, setEnableOrderNote] = useState(
+    (settings.enablePickupNote || settings.enableDeliveryNote) || false
+  );
   const [pickupTitle, setPickupTitle] = useState(settings.pickupTitle || "Store Pickup");
   const [deliveryTitle, setDeliveryTitle] = useState(settings.deliveryTitle || "Local Delivery");
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor || "#008060");
@@ -140,6 +142,13 @@ export default function SettingsPage() {
     >
       <Form method="post">
         <Layout>
+          {actionData?.success && (
+            <Layout.Section>
+              <Banner tone="success">
+                <p>{actionData.message}</p>
+              </Banner>
+            </Layout.Section>
+          )}
           <Layout.Section>
             <Card>
               <BlockStack gap="500">
@@ -180,12 +189,12 @@ export default function SettingsPage() {
                 <input type="hidden" name="enableSecurityCode" value={enableSecurityCode ? "on" : "off"} />
                 
                 <Checkbox
-                  label="Enable Pickup Note"
-                  checked={enablePickupNote}
-                  onChange={setEnablePickupNote}
-                  helpText="Allow customers to add pickup notes (written to Shopify order notes)"
+                  label="Enable Order Note"
+                  checked={enableOrderNote}
+                  onChange={setEnableOrderNote}
+                  helpText="Show one shared order note field in the widget. Turn this off if your theme already has an order note input."
                 />
-                <input type="hidden" name="enablePickupNote" value={enablePickupNote ? "on" : "off"} />
+                <input type="hidden" name="enableOrderNote" value={enableOrderNote ? "on" : "off"} />
 
                 <Divider />
 
@@ -337,14 +346,6 @@ export default function SettingsPage() {
                   placeholder="delivery, local-delivery"
                   helpText="Comma-separated tags to add to delivery orders"
                 />
-                
-                <Checkbox
-                  label="Enable Delivery Note"
-                  checked={enableDeliveryNote}
-                  onChange={setEnableDeliveryNote}
-                  helpText="Allow customers to add delivery notes (written to Shopify order notes)"
-                />
-                <input type="hidden" name="enableDeliveryNote" value={enableDeliveryNote ? "on" : "off"} />
                 
                 <Divider />
                 

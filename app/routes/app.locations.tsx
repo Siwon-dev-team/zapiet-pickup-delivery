@@ -1,4 +1,8 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import {
+  json,
+  type LoaderFunctionArgs,
+  type ActionFunctionArgs,
+} from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import {
   Page,
@@ -59,31 +63,58 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const isPickup = formData.get("isPickup") === "true";
       const isDelivery = formData.get("isDelivery") === "true";
       const businessHours = formData.get("businessHours") as string;
-      const pickupActivationConditions = formData.get("pickupActivationConditions") as string;
-      const deliveryActivationConditions = formData.get("deliveryActivationConditions") as string;
-      
+      const pickupActivationConditions = formData.get(
+        "pickupActivationConditions",
+      ) as string;
+      const deliveryActivationConditions = formData.get(
+        "deliveryActivationConditions",
+      ) as string;
+
       const pickupDays = formData.get("pickupDays") as string;
       const deliveryDays = formData.get("deliveryDays") as string;
       const pickupTimeSlots = formData.get("pickupTimeSlots") as string;
       const deliveryTimeSlots = formData.get("deliveryTimeSlots") as string;
-      const pickupTimeSlotsPerDay = formData.get("pickupTimeSlotsPerDay") as string;
-      const deliveryTimeSlotsPerDay = formData.get("deliveryTimeSlotsPerDay") as string;
-      const pickupPreparationDays = parseInt(formData.get("pickupPreparationDays") as string) || 0;
-      const deliveryPreparationDays = parseInt(formData.get("deliveryPreparationDays") as string) || 0;
-      const pickupOrderLimitPerDay = formData.get("pickupOrderLimitPerDay") as string;
-      const deliveryOrderLimitPerDay = formData.get("deliveryOrderLimitPerDay") as string;
-      const pickupOrderLimitPerSlot = formData.get("pickupOrderLimitPerSlot") as string;
-      const deliveryOrderLimitPerSlot = formData.get("deliveryOrderLimitPerSlot") as string;
-      const pickupMaxDaysInAdvance = parseInt(formData.get("pickupMaxDaysInAdvance") as string) || 30;
-      const deliveryMaxDaysInAdvance = parseInt(formData.get("deliveryMaxDaysInAdvance") as string) || 30;
+      const pickupTimeSlotsPerDay = formData.get(
+        "pickupTimeSlotsPerDay",
+      ) as string;
+      const deliveryTimeSlotsPerDay = formData.get(
+        "deliveryTimeSlotsPerDay",
+      ) as string;
+      const pickupPreparationDays =
+        parseInt(formData.get("pickupPreparationDays") as string) || 0;
+      const deliveryPreparationDays =
+        parseInt(formData.get("deliveryPreparationDays") as string) || 0;
+      const pickupOrderLimitPerDay = formData.get(
+        "pickupOrderLimitPerDay",
+      ) as string;
+      const deliveryOrderLimitPerDay = formData.get(
+        "deliveryOrderLimitPerDay",
+      ) as string;
+      const pickupOrderLimitPerSlot = formData.get(
+        "pickupOrderLimitPerSlot",
+      ) as string;
+      const deliveryOrderLimitPerSlot = formData.get(
+        "deliveryOrderLimitPerSlot",
+      ) as string;
+      const pickupMaxDaysInAdvance =
+        parseInt(formData.get("pickupMaxDaysInAdvance") as string) || 30;
+      const deliveryMaxDaysInAdvance =
+        parseInt(formData.get("deliveryMaxDaysInAdvance") as string) || 30;
       const pickupBlackoutDates = formData.get("pickupBlackoutDates") as string;
-      const deliveryBlackoutDates = formData.get("deliveryBlackoutDates") as string;
+      const deliveryBlackoutDates = formData.get(
+        "deliveryBlackoutDates",
+      ) as string;
       const pickupTags = formData.get("pickupTags") as string;
       const deliveryTags = formData.get("deliveryTags") as string;
       const pickupNextWeekOnly = formData.get("pickupNextWeekOnly") === "true";
-      const pickupNextWeekSameWeekDays = formData.get("pickupNextWeekSameWeekDays") as string;
-      const deliveryNextWeekOnly = formData.get("deliveryNextWeekOnly") === "true";
-      const deliveryNextWeekSameWeekDays = formData.get("deliveryNextWeekSameWeekDays") as string;
+      const pickupNextWeekSameWeekDays = formData.get(
+        "pickupNextWeekSameWeekDays",
+      ) as string;
+      const deliveryNextWeekOnly =
+        formData.get("deliveryNextWeekOnly") === "true";
+      const deliveryNextWeekSameWeekDays = formData.get(
+        "deliveryNextWeekSameWeekDays",
+      ) as string;
       const notificationEmails = formData.get("notificationEmails") as string;
       const notificationPhones = formData.get("notificationPhones") as string;
       const allowedProducts = formData.get("allowedProducts") as string;
@@ -112,10 +143,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         deliveryTimeSlotsPerDay: deliveryTimeSlotsPerDay || "{}",
         pickupPreparationDays,
         deliveryPreparationDays,
-        pickupOrderLimitPerDay: pickupOrderLimitPerDay ? parseInt(pickupOrderLimitPerDay) : null,
-        deliveryOrderLimitPerDay: deliveryOrderLimitPerDay ? parseInt(deliveryOrderLimitPerDay) : null,
-        pickupOrderLimitPerSlot: pickupOrderLimitPerSlot ? parseInt(pickupOrderLimitPerSlot) : null,
-        deliveryOrderLimitPerSlot: deliveryOrderLimitPerSlot ? parseInt(deliveryOrderLimitPerSlot) : null,
+        pickupOrderLimitPerDay: pickupOrderLimitPerDay
+          ? parseInt(pickupOrderLimitPerDay)
+          : null,
+        deliveryOrderLimitPerDay: deliveryOrderLimitPerDay
+          ? parseInt(deliveryOrderLimitPerDay)
+          : null,
+        pickupOrderLimitPerSlot: pickupOrderLimitPerSlot
+          ? parseInt(pickupOrderLimitPerSlot)
+          : null,
+        deliveryOrderLimitPerSlot: deliveryOrderLimitPerSlot
+          ? parseInt(deliveryOrderLimitPerSlot)
+          : null,
         pickupMaxDaysInAdvance,
         deliveryMaxDaysInAdvance,
         pickupBlackoutDates: pickupBlackoutDates || "[]",
@@ -146,7 +185,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (action === "duplicate") {
       const id = formData.get("id") as string;
       const original = await db.location.findUnique({ where: { id } });
-      
+
       if (original && original.shop === session.shop) {
         const { id: _, createdAt, updatedAt, ...data } = original;
         await db.location.create({
@@ -184,11 +223,9 @@ export default function LocationsPage() {
   const { locations } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<FetcherData>();
 
-  // Modal state
   const [modalActive, setModalActive] = useState(false);
   const [editingLocation, setEditingLocation] = useState<any>(null);
-  
-  // Form state
+
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -207,13 +244,17 @@ export default function LocationsPage() {
   const [deliveryMinWeight, setDeliveryMinWeight] = useState("");
   const [deliveryMaxWeight, setDeliveryMaxWeight] = useState("");
   const [deliveryZones, setDeliveryZones] = useState("");
-  
+
   const [pickupDays, setPickupDays] = useState<string[]>([]);
   const [deliveryDays, setDeliveryDays] = useState<string[]>([]);
   const [pickupTimeSlots, setPickupTimeSlots] = useState("");
   const [deliveryTimeSlots, setDeliveryTimeSlots] = useState("");
-  const [pickupTimeSlotsPerDay, setPickupTimeSlotsPerDay] = useState<Record<string, string[]>>({});
-  const [deliveryTimeSlotsPerDay, setDeliveryTimeSlotsPerDay] = useState<Record<string, string[]>>({});
+  const [pickupTimeSlotsPerDay, setPickupTimeSlotsPerDay] = useState<
+    Record<string, string[]>
+  >({});
+  const [deliveryTimeSlotsPerDay, setDeliveryTimeSlotsPerDay] = useState<
+    Record<string, string[]>
+  >({});
   const [pickupSelectedDay, setPickupSelectedDay] = useState(0);
   const [deliverySelectedDay, setDeliverySelectedDay] = useState(0);
   const [pickupPreparationDays, setPickupPreparationDays] = useState("0");
@@ -221,17 +262,21 @@ export default function LocationsPage() {
   const [pickupOrderLimitPerDay, setPickupOrderLimitPerDay] = useState("");
   const [deliveryOrderLimitPerDay, setDeliveryOrderLimitPerDay] = useState("");
   const [pickupOrderLimitPerSlot, setPickupOrderLimitPerSlot] = useState("");
-  const [deliveryOrderLimitPerSlot, setDeliveryOrderLimitPerSlot] = useState("");
+  const [deliveryOrderLimitPerSlot, setDeliveryOrderLimitPerSlot] =
+    useState("");
   const [pickupMaxDaysInAdvance, setPickupMaxDaysInAdvance] = useState("30");
-  const [deliveryMaxDaysInAdvance, setDeliveryMaxDaysInAdvance] = useState("30");
+  const [deliveryMaxDaysInAdvance, setDeliveryMaxDaysInAdvance] =
+    useState("30");
   const [pickupBlackoutDates, setPickupBlackoutDates] = useState("");
   const [deliveryBlackoutDates, setDeliveryBlackoutDates] = useState("");
   const [pickupTags, setPickupTags] = useState("");
   const [deliveryTags, setDeliveryTags] = useState("");
   const [pickupNextWeekOnly, setPickupNextWeekOnly] = useState(false);
-  const [pickupNextWeekSameWeekDays, setPickupNextWeekSameWeekDays] = useState("[]");
+  const [pickupNextWeekSameWeekDays, setPickupNextWeekSameWeekDays] =
+    useState("[]");
   const [deliveryNextWeekOnly, setDeliveryNextWeekOnly] = useState(false);
-  const [deliveryNextWeekSameWeekDays, setDeliveryNextWeekSameWeekDays] = useState("[]");
+  const [deliveryNextWeekSameWeekDays, setDeliveryNextWeekSameWeekDays] =
+    useState("[]");
   const [notificationEmails, setNotificationEmails] = useState("");
   const [notificationPhones, setNotificationPhones] = useState("");
   const [allowedProducts, setAllowedProducts] = useState("all");
@@ -272,7 +317,7 @@ export default function LocationsPage() {
     if (options.zones) {
       const zones = options.zones
         .split(",")
-        .map(zone => zone.trim())
+        .map((zone) => zone.trim())
         .filter(Boolean);
       if (zones.length > 0) conditions.deliveryZones = zones;
     }
@@ -280,18 +325,15 @@ export default function LocationsPage() {
     return JSON.stringify(conditions);
   };
 
-  // Search/Filter state
   const [queryValue, setQueryValue] = useState("");
   const [pickupFilter, setPickupFilter] = useState<string[]>([]);
   const [deliveryFilter, setDeliveryFilter] = useState<string[]>([]);
-  
-  // Pagination state
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const handleOpenModal = (location?: any) => {
     if (location) {
-      // Edit mode
       setEditingLocation(location);
       setName(location.name);
       setAddress(location.address || "");
@@ -301,28 +343,36 @@ export default function LocationsPage() {
       setIsPickup(location.isPickup);
       setIsDelivery(location.isDelivery);
       setBusinessHours(location.businessHours || "{}");
-      const pickupConditions = parseConditions(location.pickupActivationConditions);
+      const pickupConditions = parseConditions(
+        location.pickupActivationConditions,
+      );
       setPickupMinOrder(toNumberString(pickupConditions.minOrderValue));
       setPickupMaxOrder(toNumberString(pickupConditions.maxOrderValue));
       setPickupMinWeight(toNumberString(pickupConditions.minWeight));
       setPickupMaxWeight(toNumberString(pickupConditions.maxWeight));
-      const deliveryConditions = parseConditions(location.deliveryActivationConditions);
+      const deliveryConditions = parseConditions(
+        location.deliveryActivationConditions,
+      );
       setDeliveryMinOrder(toNumberString(deliveryConditions.minOrderValue));
       setDeliveryMaxOrder(toNumberString(deliveryConditions.maxOrderValue));
       setDeliveryMinWeight(toNumberString(deliveryConditions.minWeight));
       setDeliveryMaxWeight(toNumberString(deliveryConditions.maxWeight));
       setDeliveryZones((deliveryConditions.deliveryZones || []).join(", "));
-      
+
       const parseArray = (str: string | null | undefined): any[] => {
         if (!str) return [];
-        try { return JSON.parse(str); } catch { return []; }
+        try {
+          return JSON.parse(str);
+        } catch {
+          return [];
+        }
       };
-      
+
       setPickupDays(parseArray(location.pickupDays));
       setDeliveryDays(parseArray(location.deliveryDays));
       setPickupTimeSlots(parseArray(location.pickupTimeSlots).join("\n"));
       setDeliveryTimeSlots(parseArray(location.deliveryTimeSlots).join("\n"));
-      
+
       try {
         const pickupPerDay = JSON.parse(location.pickupTimeSlotsPerDay || "{}");
         setPickupTimeSlotsPerDay(pickupPerDay);
@@ -330,33 +380,60 @@ export default function LocationsPage() {
         setPickupTimeSlotsPerDay({});
       }
       try {
-        const deliveryPerDay = JSON.parse(location.deliveryTimeSlotsPerDay || "{}");
+        const deliveryPerDay = JSON.parse(
+          location.deliveryTimeSlotsPerDay || "{}",
+        );
         setDeliveryTimeSlotsPerDay(deliveryPerDay);
       } catch {
         setDeliveryTimeSlotsPerDay({});
       }
-      
+
       setPickupPreparationDays(String(location.pickupPreparationDays || 0));
       setDeliveryPreparationDays(String(location.deliveryPreparationDays || 0));
-      setPickupOrderLimitPerDay(location.pickupOrderLimitPerDay ? String(location.pickupOrderLimitPerDay) : "");
-      setDeliveryOrderLimitPerDay(location.deliveryOrderLimitPerDay ? String(location.deliveryOrderLimitPerDay) : "");
-      setPickupOrderLimitPerSlot(location.pickupOrderLimitPerSlot ? String(location.pickupOrderLimitPerSlot) : "");
-      setDeliveryOrderLimitPerSlot(location.deliveryOrderLimitPerSlot ? String(location.deliveryOrderLimitPerSlot) : "");
+      setPickupOrderLimitPerDay(
+        location.pickupOrderLimitPerDay
+          ? String(location.pickupOrderLimitPerDay)
+          : "",
+      );
+      setDeliveryOrderLimitPerDay(
+        location.deliveryOrderLimitPerDay
+          ? String(location.deliveryOrderLimitPerDay)
+          : "",
+      );
+      setPickupOrderLimitPerSlot(
+        location.pickupOrderLimitPerSlot
+          ? String(location.pickupOrderLimitPerSlot)
+          : "",
+      );
+      setDeliveryOrderLimitPerSlot(
+        location.deliveryOrderLimitPerSlot
+          ? String(location.deliveryOrderLimitPerSlot)
+          : "",
+      );
       setPickupMaxDaysInAdvance(String(location.pickupMaxDaysInAdvance || 30));
-      setDeliveryMaxDaysInAdvance(String(location.deliveryMaxDaysInAdvance || 30));
-      setPickupBlackoutDates(parseArray(location.pickupBlackoutDates).join(", "));
-      setDeliveryBlackoutDates(parseArray(location.deliveryBlackoutDates).join(", "));
+      setDeliveryMaxDaysInAdvance(
+        String(location.deliveryMaxDaysInAdvance || 30),
+      );
+      setPickupBlackoutDates(
+        parseArray(location.pickupBlackoutDates).join(", "),
+      );
+      setDeliveryBlackoutDates(
+        parseArray(location.deliveryBlackoutDates).join(", "),
+      );
       setPickupTags(location.pickupTags || "");
       setDeliveryTags(location.deliveryTags || "");
       setPickupNextWeekOnly(location.pickupNextWeekOnly || false);
-      setPickupNextWeekSameWeekDays(location.pickupNextWeekSameWeekDays || "[]");
+      setPickupNextWeekSameWeekDays(
+        location.pickupNextWeekSameWeekDays || "[]",
+      );
       setDeliveryNextWeekOnly(location.deliveryNextWeekOnly || false);
-      setDeliveryNextWeekSameWeekDays(location.deliveryNextWeekSameWeekDays || "[]");
+      setDeliveryNextWeekSameWeekDays(
+        location.deliveryNextWeekSameWeekDays || "[]",
+      );
       setNotificationEmails(location.notificationEmails || "");
       setNotificationPhones(location.notificationPhones || "");
       setAllowedProducts(location.allowedProducts || "all");
     } else {
-      // Create mode
       setEditingLocation(null);
       setName("");
       setAddress("");
@@ -375,7 +452,7 @@ export default function LocationsPage() {
       setDeliveryMinWeight("");
       setDeliveryMaxWeight("");
       setDeliveryZones("");
-      
+
       setPickupDays([]);
       setDeliveryDays([]);
       setPickupTimeSlots("");
@@ -427,7 +504,7 @@ export default function LocationsPage() {
         maxOrder: pickupMaxOrder,
         minWeight: pickupMinWeight,
         maxWeight: pickupMaxWeight,
-      })
+      }),
     );
     formData.append(
       "deliveryActivationConditions",
@@ -437,15 +514,27 @@ export default function LocationsPage() {
         minWeight: deliveryMinWeight,
         maxWeight: deliveryMaxWeight,
         zones: deliveryZones,
-      })
+      }),
     );
-    
+
     formData.append("pickupDays", JSON.stringify(pickupDays));
     formData.append("deliveryDays", JSON.stringify(deliveryDays));
-    formData.append("pickupTimeSlots", JSON.stringify(pickupTimeSlots.split("\n").filter(Boolean)));
-    formData.append("deliveryTimeSlots", JSON.stringify(deliveryTimeSlots.split("\n").filter(Boolean)));
-    formData.append("pickupTimeSlotsPerDay", JSON.stringify(pickupTimeSlotsPerDay));
-    formData.append("deliveryTimeSlotsPerDay", JSON.stringify(deliveryTimeSlotsPerDay));
+    formData.append(
+      "pickupTimeSlots",
+      JSON.stringify(pickupTimeSlots.split("\n").filter(Boolean)),
+    );
+    formData.append(
+      "deliveryTimeSlots",
+      JSON.stringify(deliveryTimeSlots.split("\n").filter(Boolean)),
+    );
+    formData.append(
+      "pickupTimeSlotsPerDay",
+      JSON.stringify(pickupTimeSlotsPerDay),
+    );
+    formData.append(
+      "deliveryTimeSlotsPerDay",
+      JSON.stringify(deliveryTimeSlotsPerDay),
+    );
     formData.append("pickupPreparationDays", pickupPreparationDays);
     formData.append("deliveryPreparationDays", deliveryPreparationDays);
     formData.append("pickupOrderLimitPerDay", pickupOrderLimitPerDay);
@@ -454,14 +543,33 @@ export default function LocationsPage() {
     formData.append("deliveryOrderLimitPerSlot", deliveryOrderLimitPerSlot);
     formData.append("pickupMaxDaysInAdvance", pickupMaxDaysInAdvance);
     formData.append("deliveryMaxDaysInAdvance", deliveryMaxDaysInAdvance);
-    formData.append("pickupBlackoutDates", JSON.stringify(pickupBlackoutDates.split(",").map(d => d.trim()).filter(Boolean)));
-    formData.append("deliveryBlackoutDates", JSON.stringify(deliveryBlackoutDates.split(",").map(d => d.trim()).filter(Boolean)));
+    formData.append(
+      "pickupBlackoutDates",
+      JSON.stringify(
+        pickupBlackoutDates
+          .split(",")
+          .map((d) => d.trim())
+          .filter(Boolean),
+      ),
+    );
+    formData.append(
+      "deliveryBlackoutDates",
+      JSON.stringify(
+        deliveryBlackoutDates
+          .split(",")
+          .map((d) => d.trim())
+          .filter(Boolean),
+      ),
+    );
     formData.append("pickupTags", pickupTags);
     formData.append("deliveryTags", deliveryTags);
     formData.append("pickupNextWeekOnly", String(pickupNextWeekOnly));
     formData.append("pickupNextWeekSameWeekDays", pickupNextWeekSameWeekDays);
     formData.append("deliveryNextWeekOnly", String(deliveryNextWeekOnly));
-    formData.append("deliveryNextWeekSameWeekDays", deliveryNextWeekSameWeekDays);
+    formData.append(
+      "deliveryNextWeekSameWeekDays",
+      deliveryNextWeekSameWeekDays,
+    );
     formData.append("notificationEmails", notificationEmails);
     formData.append("notificationPhones", notificationPhones);
     formData.append("allowedProducts", allowedProducts);
@@ -479,35 +587,35 @@ export default function LocationsPage() {
     }
   };
 
-  // Filter locations
   const filteredLocations = useMemo(() => {
     return locations.filter((location) => {
-      // Search filter
-      const matchesQuery = queryValue === "" || 
+      const matchesQuery =
+        queryValue === "" ||
         location.name.toLowerCase().includes(queryValue.toLowerCase()) ||
-        (location.address || "").toLowerCase().includes(queryValue.toLowerCase());
+        (location.address || "")
+          .toLowerCase()
+          .includes(queryValue.toLowerCase());
 
-      // Pickup filter
-      const matchesPickup = pickupFilter.length === 0 ||
+      const matchesPickup =
+        pickupFilter.length === 0 ||
         (pickupFilter.includes("enabled") && location.isPickup) ||
         (pickupFilter.includes("disabled") && !location.isPickup);
 
-      // Delivery filter
-      const matchesDelivery = deliveryFilter.length === 0 ||
+      const matchesDelivery =
+        deliveryFilter.length === 0 ||
         (deliveryFilter.includes("enabled") && location.isDelivery) ||
         (deliveryFilter.includes("disabled") && !location.isDelivery);
 
       return matchesQuery && matchesPickup && matchesDelivery;
     });
   }, [locations, queryValue, pickupFilter, deliveryFilter]);
-  
-  // Paginated locations
+
   const paginatedLocations = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredLocations.slice(startIndex, endIndex);
   }, [filteredLocations, currentPage, itemsPerPage]);
-  
+
   const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
 
   const handleQueryClear = () => setQueryValue("");
@@ -578,56 +686,54 @@ export default function LocationsPage() {
     plural: "locations",
   };
 
-  const rowMarkup = paginatedLocations.map(
-    (location, index) => (
-      <IndexTable.Row id={location.id} key={location.id} position={index}>
-        <IndexTable.Cell>
-          <Button variant="plain" onClick={() => handleOpenModal(location)}>
-            {location.name}
+  const rowMarkup = paginatedLocations.map((location, index) => (
+    <IndexTable.Row id={location.id} key={location.id} position={index}>
+      <IndexTable.Cell>
+        <Button variant="plain" onClick={() => handleOpenModal(location)}>
+          {location.name}
+        </Button>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        {location.address || "-"}
+        {location.city && `, ${location.city}`}
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        {location.isPickup ? (
+          <Badge tone="success">Enabled</Badge>
+        ) : (
+          <Badge>Disabled</Badge>
+        )}
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        {location.isDelivery ? (
+          <Badge tone="success">Enabled</Badge>
+        ) : (
+          <Badge>Disabled</Badge>
+        )}
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <InlineStack gap="200">
+          <Button size="slim" onClick={() => handleDuplicate(location)}>
+            Duplicate
           </Button>
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-          {location.address || "-"}
-          {location.city && `, ${location.city}`}
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-          {location.isPickup ? (
-            <Badge tone="success">Enabled</Badge>
-          ) : (
-            <Badge>Disabled</Badge>
-          )}
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-          {location.isDelivery ? (
-            <Badge tone="success">Enabled</Badge>
-          ) : (
-            <Badge>Disabled</Badge>
-          )}
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-          <InlineStack gap="200">
-            <Button size="slim" onClick={() => handleDuplicate(location)}>
-              Duplicate
-            </Button>
-            <Button
-              size="slim"
-              tone="critical"
-              onClick={() => {
-                if (confirm(`Delete "${location.name}"?`)) {
-                  const formData = new FormData();
-                  formData.append("_action", "delete");
-                  formData.append("id", location.id);
-                  fetcher.submit(formData, { method: "post" });
-                }
-              }}
-            >
-              Delete
-            </Button>
-          </InlineStack>
-        </IndexTable.Cell>
-      </IndexTable.Row>
-    )
-  );
+          <Button
+            size="slim"
+            tone="critical"
+            onClick={() => {
+              if (confirm(`Delete "${location.name}"?`)) {
+                const formData = new FormData();
+                formData.append("_action", "delete");
+                formData.append("id", location.id);
+                fetcher.submit(formData, { method: "post" });
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </InlineStack>
+      </IndexTable.Cell>
+    </IndexTable.Row>
+  ));
 
   return (
     <Page
@@ -644,7 +750,7 @@ export default function LocationsPage() {
               <p>{fetcher.data.message}</p>
             </Banner>
           )}
-          
+
           {fetcher.data?.error && (
             <Banner tone="critical" onDismiss={() => {}}>
               <p>{fetcher.data.error}</p>
@@ -663,11 +769,11 @@ export default function LocationsPage() {
                 queryPlaceholder="Search locations..."
               />
             </div>
-            
+
             {filteredLocations.length === 0 ? (
               <div style={{ padding: "40px 20px", textAlign: "center" }}>
                 <Text as="p" tone="subdued">
-                  {locations.length === 0 
+                  {locations.length === 0
                     ? "No locations yet. Click 'Add Location' to get started."
                     : "No locations match your search."}
                 </Text>
@@ -688,19 +794,30 @@ export default function LocationsPage() {
                 >
                   {rowMarkup}
                 </IndexTable>
-                
+
                 {filteredLocations.length > itemsPerPage && (
-                  <div style={{ padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div
+                    style={{
+                      padding: "16px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <div>
                       <InlineStack gap="200" align="center">
                         <Text as="span">Items per page:</Text>
-                        <select 
-                          value={itemsPerPage} 
+                        <select
+                          value={itemsPerPage}
                           onChange={(e) => {
                             setItemsPerPage(Number(e.target.value));
                             setCurrentPage(1);
                           }}
-                          style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #c9cccf" }}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid #c9cccf",
+                          }}
                         >
                           <option value="5">5</option>
                           <option value="10">10</option>
@@ -708,14 +825,19 @@ export default function LocationsPage() {
                           <option value="50">50</option>
                         </select>
                         <Text as="span" tone="subdued">
-                          Showing {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredLocations.length)} of {filteredLocations.length}
+                          Showing {(currentPage - 1) * itemsPerPage + 1} -{" "}
+                          {Math.min(
+                            currentPage * itemsPerPage,
+                            filteredLocations.length,
+                          )}{" "}
+                          of {filteredLocations.length}
                         </Text>
                       </InlineStack>
                     </div>
-                    
+
                     <InlineStack gap="200">
-                      <Button 
-                        disabled={currentPage === 1} 
+                      <Button
+                        disabled={currentPage === 1}
                         onClick={() => setCurrentPage(currentPage - 1)}
                       >
                         Previous
@@ -723,8 +845,8 @@ export default function LocationsPage() {
                       <Text as="span" variant="bodySm">
                         Page {currentPage} of {totalPages}
                       </Text>
-                      <Button 
-                        disabled={currentPage === totalPages} 
+                      <Button
+                        disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(currentPage + 1)}
                       >
                         Next
@@ -774,24 +896,24 @@ export default function LocationsPage() {
             />
 
             <InlineStack gap="300">
-              <TextField 
-                label="City" 
-                value={city} 
-                onChange={setCity} 
+              <TextField
+                label="City"
+                value={city}
+                onChange={setCity}
                 placeholder="Ottawa"
                 autoComplete="address-level2"
               />
-              <TextField 
-                label="Zip" 
-                value={zip} 
-                onChange={setZip} 
+              <TextField
+                label="Zip"
+                value={zip}
+                onChange={setZip}
                 placeholder="K1A 0A9"
                 autoComplete="postal-code"
               />
-              <TextField 
-                label="Country" 
-                value={country} 
-                onChange={setCountry} 
+              <TextField
+                label="Country"
+                value={country}
+                onChange={setCountry}
                 placeholder="Canada"
                 autoComplete="country-name"
               />
@@ -810,7 +932,9 @@ export default function LocationsPage() {
             />
 
             <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">Pickup Conditions</Text>
+              <Text as="h3" variant="headingSm">
+                Pickup Conditions
+              </Text>
               <InlineStack gap="300">
                 <TextField
                   label="Min Order ($)"
@@ -846,7 +970,9 @@ export default function LocationsPage() {
             </BlockStack>
 
             <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">Delivery Conditions</Text>
+              <Text as="h3" variant="headingSm">
+                Delivery Conditions
+              </Text>
               <InlineStack gap="300">
                 <TextField
                   label="Min Order ($)"
@@ -890,15 +1016,17 @@ export default function LocationsPage() {
 
             <BlockStack gap="300">
               <InlineStack align="space-between">
-                <Text as="h3" variant="headingSm">Business Hours</Text>
-                <Button 
-                  variant="plain" 
+                <Text as="h3" variant="headingSm">
+                  Business Hours
+                </Text>
+                <Button
+                  variant="plain"
                   onClick={() => setShowAdvancedHours(!showAdvancedHours)}
                 >
                   {showAdvancedHours ? "Simple mode" : "Advanced (JSON)"}
                 </Button>
               </InlineStack>
-              
+
               {showAdvancedHours ? (
                 <TextField
                   label=""
@@ -920,359 +1048,470 @@ export default function LocationsPage() {
                       if (e && e.target) {
                         const value = (e.target as HTMLInputElement).value;
                         if (value) {
-                          const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+                          const days = [
+                            "monday",
+                            "tuesday",
+                            "wednesday",
+                            "thursday",
+                            "friday",
+                            "saturday",
+                            "sunday",
+                          ];
                           const hours: any = {};
-                          days.forEach(day => hours[day] = "09:00-17:00");
+                          days.forEach((day) => (hours[day] = "09:00-17:00"));
                           setBusinessHours(JSON.stringify(hours));
                         }
                       }
                     }}
                   />
                   <Text as="p" tone="subdued" variant="bodySm">
-                    Current: {businessHours === "{}" ? "Not set" : "Custom hours configured"}
+                    Current:{" "}
+                    {businessHours === "{}"
+                      ? "Not set"
+                      : "Custom hours configured"}
                   </Text>
                 </BlockStack>
               )}
             </BlockStack>
 
-            <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">Pickup Availability</Text>
-              <ChoiceList
-                title="Select pickup days"
-                titleHidden
-                allowMultiple
-                choices={[
-                  { label: "Monday", value: "monday" },
-                  { label: "Tuesday", value: "tuesday" },
-                  { label: "Wednesday", value: "wednesday" },
-                  { label: "Thursday", value: "thursday" },
-                  { label: "Friday", value: "friday" },
-                  { label: "Saturday", value: "saturday" },
-                  { label: "Sunday", value: "sunday" },
-                ]}
-                selected={pickupDays}
-                onChange={setPickupDays}
-              />
-              <TextField
-                label="Pickup Time Slots (one per line)"
-                value={pickupTimeSlots}
-                onChange={setPickupTimeSlots}
-                multiline={4}
-                autoComplete="off"
-                helpText="e.g., 9:00 AM - 12:00 PM"
-                placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 5:00 PM"
-              />
-              
-              <Divider />
-              <Text as="p" variant="bodyMd" fontWeight="semibold">Or set different time slots for each day:</Text>
-              <Tabs
-                tabs={[
-                  { id: 'monday', content: 'Mon' },
-                  { id: 'tuesday', content: 'Tue' },
-                  { id: 'wednesday', content: 'Wed' },
-                  { id: 'thursday', content: 'Thu' },
-                  { id: 'friday', content: 'Fri' },
-                  { id: 'saturday', content: 'Sat' },
-                  { id: 'sunday', content: 'Sun' },
-                ]}
-                selected={pickupSelectedDay}
-                onSelect={setPickupSelectedDay}
-              >
-                <Card>
-                  <BlockStack gap="200">
-                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day, index) => (
-                      pickupSelectedDay === index && (
-                        <TextField
-                          key={day}
-                          label={`${day.charAt(0).toUpperCase() + day.slice(1)} Time Slots (one per line)`}
-                          value={(pickupTimeSlotsPerDay[day] || []).join('\n')}
-                          onChange={(value) => {
-                            const newSlots = value.split('\n').filter(Boolean);
-                            setPickupTimeSlotsPerDay({
-                              ...pickupTimeSlotsPerDay,
-                              [day]: newSlots
-                            });
-                          }}
-                          multiline={4}
-                          autoComplete="off"
-                          placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 5:00 PM"
-                        />
-                      )
-                    ))}
-                  </BlockStack>
-                </Card>
-              </Tabs>
-              <Divider />
-              
-              <InlineStack gap="300">
-                <TextField
-                  label="Preparation Days"
-                  type="number"
-                  value={pickupPreparationDays}
-                  onChange={setPickupPreparationDays}
-                  autoComplete="off"
-                  helpText="Days notice required"
+            <div
+              style={{
+                border: "1px solid #e1e3e5",
+                borderRadius: "12px",
+                padding: "16px",
+                background: "#ffffff",
+              }}
+            >
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm">
+                  Pickup Availability
+                </Text>
+                <Text as="p" tone="subdued" variant="bodySm">
+                  Configure pickup schedule, limits, blackout dates, and
+                  pickup-specific overrides.
+                </Text>
+                <ChoiceList
+                  title="Select pickup days"
+                  titleHidden
+                  allowMultiple
+                  choices={[
+                    { label: "Monday", value: "monday" },
+                    { label: "Tuesday", value: "tuesday" },
+                    { label: "Wednesday", value: "wednesday" },
+                    { label: "Thursday", value: "thursday" },
+                    { label: "Friday", value: "friday" },
+                    { label: "Saturday", value: "saturday" },
+                    { label: "Sunday", value: "sunday" },
+                  ]}
+                  selected={pickupDays}
+                  onChange={setPickupDays}
                 />
                 <TextField
-                  label="Max Days in Advance"
-                  type="number"
-                  value={pickupMaxDaysInAdvance}
-                  onChange={setPickupMaxDaysInAdvance}
+                  label="Pickup Time Slots (one per line)"
+                  value={pickupTimeSlots}
+                  onChange={setPickupTimeSlots}
+                  multiline={4}
                   autoComplete="off"
+                  helpText="e.g., 9:00 AM - 12:00 PM"
+                  placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 5:00 PM"
                 />
-              </InlineStack>
-              <InlineStack gap="300">
-                <TextField
-                  label="Order Limit per Day"
-                  type="number"
-                  value={pickupOrderLimitPerDay}
-                  onChange={setPickupOrderLimitPerDay}
-                  autoComplete="off"
+
+                <Divider />
+                <Text as="p" variant="bodyMd" fontWeight="semibold">
+                  Or set different time slots for each day:
+                </Text>
+                <Tabs
+                  tabs={[
+                    { id: "monday", content: "Mon" },
+                    { id: "tuesday", content: "Tue" },
+                    { id: "wednesday", content: "Wed" },
+                    { id: "thursday", content: "Thu" },
+                    { id: "friday", content: "Fri" },
+                    { id: "saturday", content: "Sat" },
+                    { id: "sunday", content: "Sun" },
+                  ]}
+                  selected={pickupSelectedDay}
+                  onSelect={setPickupSelectedDay}
+                >
+                  <Card>
+                    <BlockStack gap="200">
+                      {[
+                        "monday",
+                        "tuesday",
+                        "wednesday",
+                        "thursday",
+                        "friday",
+                        "saturday",
+                        "sunday",
+                      ].map(
+                        (day, index) =>
+                          pickupSelectedDay === index && (
+                            <TextField
+                              key={day}
+                              label={`${day.charAt(0).toUpperCase() + day.slice(1)} Time Slots (one per line)`}
+                              value={(pickupTimeSlotsPerDay[day] || []).join(
+                                "\n",
+                              )}
+                              onChange={(value) => {
+                                const newSlots = value
+                                  .split("\n")
+                                  .filter(Boolean);
+                                setPickupTimeSlotsPerDay({
+                                  ...pickupTimeSlotsPerDay,
+                                  [day]: newSlots,
+                                });
+                              }}
+                              multiline={4}
+                              autoComplete="off"
+                              placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 5:00 PM"
+                            />
+                          ),
+                      )}
+                    </BlockStack>
+                  </Card>
+                </Tabs>
+                <Divider />
+
+                <Checkbox
+                  label="Enable Pickup Next Week Only (Location Override)"
+                  checked={pickupNextWeekOnly}
+                  onChange={setPickupNextWeekOnly}
+                  helpText="Force pickups from this location to next week only"
                 />
-                <TextField
-                  label="Order Limit per Slot"
-                  type="number"
-                  value={pickupOrderLimitPerSlot}
-                  onChange={setPickupOrderLimitPerSlot}
-                  autoComplete="off"
-                />
-              </InlineStack>
-              <TextField
-                label="Blackout Dates (comma-separated)"
-                value={pickupBlackoutDates}
-                onChange={setPickupBlackoutDates}
-                autoComplete="off"
-                helpText="e.g., 2026-12-25, 2026-01-01"
-                placeholder="2026-12-25, 2026-01-01"
-              />
-              <TextField
-                label="Pickup Tags"
-                value={pickupTags}
-                onChange={setPickupTags}
-                autoComplete="off"
-                helpText="Comma-separated tags for pickup orders from this location"
-                placeholder="Store Pickup, Click & Collect"
-              />
-              <Checkbox
-                label="Enable Pickup Next Week Only (Location Override)"
-                checked={pickupNextWeekOnly}
-                onChange={setPickupNextWeekOnly}
-                helpText="Force pickups from this location to next week only"
-              />
-              {pickupNextWeekOnly && (
-                <>
-                  <Banner tone="info">
-                    <p>Select which days allow same-week pickup. All other days will require next week pickup.</p>
-                  </Banner>
-                  <BlockStack gap="200">
-                    <Text as="p" variant="bodyMd" fontWeight="semibold">Same-Week Pickup Days:</Text>
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                      const dayLower = day.toLowerCase();
-                      let selectedDays: string[] = [];
-                      try {
-                        selectedDays = JSON.parse(pickupNextWeekSameWeekDays);
-                      } catch (e) {
-                        selectedDays = [];
-                      }
-                      const isChecked = selectedDays.includes(dayLower);
-                      
-                      return (
-                        <Checkbox
-                          key={day}
-                          label={day}
-                          checked={isChecked}
-                          onChange={(checked) => {
-                            const current = [...selectedDays];
-                            if (checked) {
-                              if (!current.includes(dayLower)) {
-                                current.push(dayLower);
+                {pickupNextWeekOnly && (
+                  <>
+                    <Banner tone="info">
+                      <p>
+                        Select which days allow same-week pickup. All other days
+                        will require next week pickup.
+                      </p>
+                    </Banner>
+                    <BlockStack gap="200">
+                      <Text as="p" variant="bodyMd" fontWeight="semibold">
+                        Same-Week Pickup Days:
+                      </Text>
+                      {[
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                        "Sunday",
+                      ].map((day) => {
+                        const dayLower = day.toLowerCase();
+                        let selectedDays: string[] = [];
+                        try {
+                          selectedDays = JSON.parse(pickupNextWeekSameWeekDays);
+                        } catch (e) {
+                          selectedDays = [];
+                        }
+                        const isChecked = selectedDays.includes(dayLower);
+
+                        return (
+                          <Checkbox
+                            key={day}
+                            label={day}
+                            checked={isChecked}
+                            onChange={(checked) => {
+                              const current = [...selectedDays];
+                              if (checked) {
+                                if (!current.includes(dayLower)) {
+                                  current.push(dayLower);
+                                }
+                              } else {
+                                const index = current.indexOf(dayLower);
+                                if (index > -1) {
+                                  current.splice(index, 1);
+                                }
                               }
-                            } else {
-                              const index = current.indexOf(dayLower);
-                              if (index > -1) {
-                                current.splice(index, 1);
+                              setPickupNextWeekSameWeekDays(
+                                JSON.stringify(current),
+                              );
+                            }}
+                          />
+                        );
+                      })}
+                    </BlockStack>
+                  </>
+                )}
+
+                <InlineStack gap="300">
+                  <TextField
+                    label="Preparation Days"
+                    type="number"
+                    value={pickupPreparationDays}
+                    onChange={setPickupPreparationDays}
+                    autoComplete="off"
+                    helpText="Days notice required"
+                    disabled={pickupNextWeekOnly}
+                  />
+                  <TextField
+                    label="Max Days in Advance"
+                    type="number"
+                    value={pickupMaxDaysInAdvance}
+                    onChange={setPickupMaxDaysInAdvance}
+                    autoComplete="off"
+                    disabled={pickupNextWeekOnly}
+                  />
+                </InlineStack>
+                <InlineStack gap="300">
+                  <TextField
+                    label="Order Limit per Day"
+                    type="number"
+                    value={pickupOrderLimitPerDay}
+                    onChange={setPickupOrderLimitPerDay}
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="Order Limit per Slot"
+                    type="number"
+                    value={pickupOrderLimitPerSlot}
+                    onChange={setPickupOrderLimitPerSlot}
+                    autoComplete="off"
+                  />
+                </InlineStack>
+                <TextField
+                  label="Blackout Dates (comma-separated)"
+                  value={pickupBlackoutDates}
+                  onChange={setPickupBlackoutDates}
+                  autoComplete="off"
+                  helpText="e.g., 2026-12-25, 2026-01-01"
+                  placeholder="2026-12-25, 2026-01-01"
+                />
+                <TextField
+                  label="Pickup Tags"
+                  value={pickupTags}
+                  onChange={setPickupTags}
+                  autoComplete="off"
+                  helpText="Comma-separated tags for pickup orders from this location"
+                  placeholder="Store Pickup, Click & Collect"
+                />
+              </BlockStack>
+            </div>
+
+            <div
+              style={{
+                border: "1px solid #e1e3e5",
+                borderRadius: "12px",
+                padding: "16px",
+                background: "#ffffff",
+              }}
+            >
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm">
+                  Delivery Availability
+                </Text>
+                <Text as="p" tone="subdued" variant="bodySm">
+                  Configure delivery schedule, limits, blackout dates, and
+                  delivery-specific overrides.
+                </Text>
+                <ChoiceList
+                  title="Select delivery days"
+                  titleHidden
+                  allowMultiple
+                  choices={[
+                    { label: "Monday", value: "monday" },
+                    { label: "Tuesday", value: "tuesday" },
+                    { label: "Wednesday", value: "wednesday" },
+                    { label: "Thursday", value: "thursday" },
+                    { label: "Friday", value: "friday" },
+                    { label: "Saturday", value: "saturday" },
+                    { label: "Sunday", value: "sunday" },
+                  ]}
+                  selected={deliveryDays}
+                  onChange={setDeliveryDays}
+                />
+                <TextField
+                  label="Delivery Time Slots (one per line)"
+                  value={deliveryTimeSlots}
+                  onChange={setDeliveryTimeSlots}
+                  multiline={4}
+                  autoComplete="off"
+                  helpText="e.g., 9:00 AM - 6:00 PM"
+                  placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 6:00 PM"
+                />
+
+                <Divider />
+                <Text as="p" variant="bodyMd" fontWeight="semibold">
+                  Or set different time slots for each day:
+                </Text>
+                <Tabs
+                  tabs={[
+                    { id: "monday", content: "Mon" },
+                    { id: "tuesday", content: "Tue" },
+                    { id: "wednesday", content: "Wed" },
+                    { id: "thursday", content: "Thu" },
+                    { id: "friday", content: "Fri" },
+                    { id: "saturday", content: "Sat" },
+                    { id: "sunday", content: "Sun" },
+                  ]}
+                  selected={deliverySelectedDay}
+                  onSelect={setDeliverySelectedDay}
+                >
+                  <Card>
+                    <BlockStack gap="200">
+                      {[
+                        "monday",
+                        "tuesday",
+                        "wednesday",
+                        "thursday",
+                        "friday",
+                        "saturday",
+                        "sunday",
+                      ].map(
+                        (day, index) =>
+                          deliverySelectedDay === index && (
+                            <TextField
+                              key={day}
+                              label={`${day.charAt(0).toUpperCase() + day.slice(1)} Time Slots (one per line)`}
+                              value={(deliveryTimeSlotsPerDay[day] || []).join(
+                                "\n",
+                              )}
+                              onChange={(value) => {
+                                const newSlots = value
+                                  .split("\n")
+                                  .filter(Boolean);
+                                setDeliveryTimeSlotsPerDay({
+                                  ...deliveryTimeSlotsPerDay,
+                                  [day]: newSlots,
+                                });
+                              }}
+                              multiline={4}
+                              autoComplete="off"
+                              placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 6:00 PM"
+                            />
+                          ),
+                      )}
+                    </BlockStack>
+                  </Card>
+                </Tabs>
+                <Divider />
+
+                <Checkbox
+                  label="Enable Delivery Next Week Only (Location Override)"
+                  checked={deliveryNextWeekOnly}
+                  onChange={setDeliveryNextWeekOnly}
+                  helpText="Force deliveries from this location to next week only"
+                />
+                {deliveryNextWeekOnly && (
+                  <>
+                    <Banner tone="info">
+                      <p>
+                        Select which days allow same-week delivery. All other
+                        days will require next week delivery.
+                      </p>
+                    </Banner>
+                    <BlockStack gap="200">
+                      <Text as="p" variant="bodyMd" fontWeight="semibold">
+                        Same-Week Delivery Days:
+                      </Text>
+                      {[
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                        "Sunday",
+                      ].map((day) => {
+                        const dayLower = day.toLowerCase();
+                        let selectedDays: string[] = [];
+                        try {
+                          selectedDays = JSON.parse(
+                            deliveryNextWeekSameWeekDays,
+                          );
+                        } catch (e) {
+                          selectedDays = [];
+                        }
+                        const isChecked = selectedDays.includes(dayLower);
+
+                        return (
+                          <Checkbox
+                            key={day}
+                            label={day}
+                            checked={isChecked}
+                            onChange={(checked) => {
+                              const current = [...selectedDays];
+                              if (checked) {
+                                if (!current.includes(dayLower)) {
+                                  current.push(dayLower);
+                                }
+                              } else {
+                                const index = current.indexOf(dayLower);
+                                if (index > -1) {
+                                  current.splice(index, 1);
+                                }
                               }
-                            }
-                            setPickupNextWeekSameWeekDays(JSON.stringify(current));
-                          }}
-                        />
-                      );
-                    })}
-                  </BlockStack>
-                </>
-              )}
-            </BlockStack>
+                              setDeliveryNextWeekSameWeekDays(
+                                JSON.stringify(current),
+                              );
+                            }}
+                          />
+                        );
+                      })}
+                    </BlockStack>
+                  </>
+                )}
+
+                <InlineStack gap="300">
+                  <TextField
+                    label="Preparation Days"
+                    type="number"
+                    value={deliveryPreparationDays}
+                    onChange={setDeliveryPreparationDays}
+                    autoComplete="off"
+                    helpText="Days notice required"
+                    disabled={deliveryNextWeekOnly}
+                  />
+                  <TextField
+                    label="Max Days in Advance"
+                    type="number"
+                    value={deliveryMaxDaysInAdvance}
+                    onChange={setDeliveryMaxDaysInAdvance}
+                    autoComplete="off"
+                    disabled={deliveryNextWeekOnly}
+                  />
+                </InlineStack>
+                <InlineStack gap="300">
+                  <TextField
+                    label="Order Limit per Day"
+                    type="number"
+                    value={deliveryOrderLimitPerDay}
+                    onChange={setDeliveryOrderLimitPerDay}
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="Order Limit per Slot"
+                    type="number"
+                    value={deliveryOrderLimitPerSlot}
+                    onChange={setDeliveryOrderLimitPerSlot}
+                    autoComplete="off"
+                  />
+                </InlineStack>
+                <TextField
+                  label="Blackout Dates (comma-separated)"
+                  value={deliveryBlackoutDates}
+                  onChange={setDeliveryBlackoutDates}
+                  autoComplete="off"
+                  helpText="e.g., 2026-12-25, 2026-01-01"
+                  placeholder="2026-12-25, 2026-01-01"
+                />
+                <TextField
+                  label="Delivery Tags"
+                  value={deliveryTags}
+                  onChange={setDeliveryTags}
+                  autoComplete="off"
+                  helpText="Comma-separated tags for delivery orders from this location"
+                  placeholder="Local Delivery"
+                />
+              </BlockStack>
+            </div>
 
             <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">Delivery Availability</Text>
-              <ChoiceList
-                title="Select delivery days"
-                titleHidden
-                allowMultiple
-                choices={[
-                  { label: "Monday", value: "monday" },
-                  { label: "Tuesday", value: "tuesday" },
-                  { label: "Wednesday", value: "wednesday" },
-                  { label: "Thursday", value: "thursday" },
-                  { label: "Friday", value: "friday" },
-                  { label: "Saturday", value: "saturday" },
-                  { label: "Sunday", value: "sunday" },
-                ]}
-                selected={deliveryDays}
-                onChange={setDeliveryDays}
-              />
-              <TextField
-                label="Delivery Time Slots (one per line)"
-                value={deliveryTimeSlots}
-                onChange={setDeliveryTimeSlots}
-                multiline={4}
-                autoComplete="off"
-                helpText="e.g., 9:00 AM - 6:00 PM"
-                placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 6:00 PM"
-              />
-              
-              <Divider />
-              <Text as="p" variant="bodyMd" fontWeight="semibold">Or set different time slots for each day:</Text>
-              <Tabs
-                tabs={[
-                  { id: 'monday', content: 'Mon' },
-                  { id: 'tuesday', content: 'Tue' },
-                  { id: 'wednesday', content: 'Wed' },
-                  { id: 'thursday', content: 'Thu' },
-                  { id: 'friday', content: 'Fri' },
-                  { id: 'saturday', content: 'Sat' },
-                  { id: 'sunday', content: 'Sun' },
-                ]}
-                selected={deliverySelectedDay}
-                onSelect={setDeliverySelectedDay}
-              >
-                <Card>
-                  <BlockStack gap="200">
-                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day, index) => (
-                      deliverySelectedDay === index && (
-                        <TextField
-                          key={day}
-                          label={`${day.charAt(0).toUpperCase() + day.slice(1)} Time Slots (one per line)`}
-                          value={(deliveryTimeSlotsPerDay[day] || []).join('\n')}
-                          onChange={(value) => {
-                            const newSlots = value.split('\n').filter(Boolean);
-                            setDeliveryTimeSlotsPerDay({
-                              ...deliveryTimeSlotsPerDay,
-                              [day]: newSlots
-                            });
-                          }}
-                          multiline={4}
-                          autoComplete="off"
-                          placeholder="9:00 AM - 12:00 PM&#10;1:00 PM - 6:00 PM"
-                        />
-                      )
-                    ))}
-                  </BlockStack>
-                </Card>
-              </Tabs>
-              <Divider />
-              
-              <InlineStack gap="300">
-                <TextField
-                  label="Preparation Days"
-                  type="number"
-                  value={deliveryPreparationDays}
-                  onChange={setDeliveryPreparationDays}
-                  autoComplete="off"
-                  helpText="Days notice required"
-                />
-                <TextField
-                  label="Max Days in Advance"
-                  type="number"
-                  value={deliveryMaxDaysInAdvance}
-                  onChange={setDeliveryMaxDaysInAdvance}
-                  autoComplete="off"
-                />
-              </InlineStack>
-              <InlineStack gap="300">
-                <TextField
-                  label="Order Limit per Day"
-                  type="number"
-                  value={deliveryOrderLimitPerDay}
-                  onChange={setDeliveryOrderLimitPerDay}
-                  autoComplete="off"
-                />
-                <TextField
-                  label="Order Limit per Slot"
-                  type="number"
-                  value={deliveryOrderLimitPerSlot}
-                  onChange={setDeliveryOrderLimitPerSlot}
-                  autoComplete="off"
-                />
-              </InlineStack>
-              <TextField
-                label="Blackout Dates (comma-separated)"
-                value={deliveryBlackoutDates}
-                onChange={setDeliveryBlackoutDates}
-                autoComplete="off"
-                helpText="e.g., 2026-12-25, 2026-01-01"
-                placeholder="2026-12-25, 2026-01-01"
-              />
-              <TextField
-                label="Delivery Tags"
-                value={deliveryTags}
-                onChange={setDeliveryTags}
-                autoComplete="off"
-                helpText="Comma-separated tags for delivery orders from this location"
-                placeholder="Local Delivery"
-              />
-              <Checkbox
-                label="Enable Delivery Next Week Only (Location Override)"
-                checked={deliveryNextWeekOnly}
-                onChange={setDeliveryNextWeekOnly}
-                helpText="Force deliveries from this location to next week only"
-              />
-              {deliveryNextWeekOnly && (
-                <>
-                  <Banner tone="info">
-                    <p>Select which days allow same-week delivery. All other days will require next week delivery.</p>
-                  </Banner>
-                  <BlockStack gap="200">
-                    <Text as="p" variant="bodyMd" fontWeight="semibold">Same-Week Delivery Days:</Text>
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                      const dayLower = day.toLowerCase();
-                      let selectedDays: string[] = [];
-                      try {
-                        selectedDays = JSON.parse(deliveryNextWeekSameWeekDays);
-                      } catch (e) {
-                        selectedDays = [];
-                      }
-                      const isChecked = selectedDays.includes(dayLower);
-                      
-                      return (
-                        <Checkbox
-                          key={day}
-                          label={day}
-                          checked={isChecked}
-                          onChange={(checked) => {
-                            const current = [...selectedDays];
-                            if (checked) {
-                              if (!current.includes(dayLower)) {
-                                current.push(dayLower);
-                              }
-                            } else {
-                              const index = current.indexOf(dayLower);
-                              if (index > -1) {
-                                current.splice(index, 1);
-                              }
-                            }
-                            setDeliveryNextWeekSameWeekDays(JSON.stringify(current));
-                          }}
-                        />
-                      );
-                    })}
-                  </BlockStack>
-                </>
-              )}
-            </BlockStack>
-
-            <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">Notifications</Text>
+              <Text as="h3" variant="headingSm">
+                Notifications
+              </Text>
               <TextField
                 label="Notification Emails"
                 value={notificationEmails}

@@ -9,8 +9,7 @@ interface WidgetSettings {
   pickupActivationConditions: string;
   deliveryActivationConditions: string;
   postalCodeValidation: 'none' | 'partial' | 'full';
-  enablePickupNote: boolean;
-  enableDeliveryNote: boolean;
+  enableOrderNote?: boolean;
   preselectLocation: 'first' | '';
   fallbackRate: number;
   deliveryTimeSlots?: string;
@@ -336,8 +335,8 @@ class ZapietWidget {
       return;
     }
 
-    // @ts-ignore
-    this.pickupDatePicker = flatpickr(input, {
+    const flatpickrInstance = (window as any).flatpickr;
+    this.pickupDatePicker = flatpickrInstance(input, {
       minDate: minDate,
       maxDate: maxDate || null,
       dateFormat: 'Y-m-d',
@@ -414,8 +413,8 @@ class ZapietWidget {
       return;
     }
 
-    // @ts-ignore
-    this.deliveryDatePicker = flatpickr(input, {
+    const flatpickrInstance = (window as any).flatpickr;
+    this.deliveryDatePicker = flatpickrInstance(input, {
       minDate: minDate,
       maxDate: maxDate || null,
       dateFormat: 'Y-m-d',
@@ -491,8 +490,38 @@ class ZapietWidget {
     const { settings, locations } = data;
     
     const orderNoteField = this.getRootElement<HTMLTextAreaElement>('#zapiet-order-note');
+    const orderNoteBlock = this.getRootElement<HTMLElement>('.zapiet-order-note-block');
+    const orderNoteToggle = this.getRootElement<HTMLButtonElement>('#zapiet-order-note-toggle');
+    const orderNoteContent = this.getRootElement<HTMLElement>('#zapiet-order-note-content');
     const orderNoteAttr = document.getElementById('attr-order-note') as HTMLInputElement;
-    if (orderNoteField && orderNoteAttr) {
+    const showOrderNote = settings.enableOrderNote ?? true;
+
+    const setOrderNoteExpanded = (expanded: boolean) => {
+      if (orderNoteToggle) {
+        orderNoteToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      }
+      if (orderNoteContent) {
+        orderNoteContent.style.display = expanded ? 'block' : 'none';
+      }
+    };
+
+    if (orderNoteBlock) {
+      orderNoteBlock.style.display = showOrderNote ? 'block' : 'none';
+    }
+    setOrderNoteExpanded(false);
+
+    if (!showOrderNote && orderNoteAttr) {
+      orderNoteAttr.value = '';
+    }
+
+    if (showOrderNote && orderNoteToggle) {
+      orderNoteToggle.addEventListener('click', () => {
+        const isExpanded = orderNoteToggle.getAttribute('aria-expanded') === 'true';
+        setOrderNoteExpanded(!isExpanded);
+      });
+    }
+
+    if (showOrderNote && orderNoteField && orderNoteAttr) {
       orderNoteField.addEventListener('input', () => {
         orderNoteAttr.value = orderNoteField.value;
         this.updateCartAttributes();
@@ -622,19 +651,6 @@ class ZapietWidget {
       }
     });
 
-    if (settings.enablePickupNote) {
-      const noteContainer = this.getRootElement<HTMLElement>('#zapiet-pickup-note-container');
-      if (noteContainer) noteContainer.style.display = 'block';
-
-      const noteField = this.getRootElement<HTMLTextAreaElement>('#zapiet-pickup-note');
-      const noteAttr = document.getElementById('attr-pickup-note') as HTMLInputElement;
-      if (noteField && noteAttr) {
-        noteField.addEventListener('input', () => {
-          noteAttr.value = noteField.value;
-          this.updateCartAttributes();
-        });
-      }
-    }
   }
 
   private handleLocationSelection(item: HTMLElement, location: Location, rates: Rate[]): void {
@@ -811,28 +827,12 @@ class ZapietWidget {
       });
     }
 
-    if (settings.enableDeliveryNote) {
-      const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
-      if (noteContainer) noteContainer.style.display = 'block';
-
-      const noteField = this.getRootElement<HTMLTextAreaElement>('#zapiet-delivery-note');
-      const noteAttr = document.getElementById('attr-delivery-note') as HTMLInputElement;
-      if (noteField && noteAttr) {
-        noteField.addEventListener('input', () => {
-          noteAttr.value = noteField.value;
-          this.updateCartAttributes();
-        });
-      }
-    }
   }
 
   private handleDeliveryCheck(data: WidgetData): void {
     const postalInput = this.getRootElement<HTMLInputElement>('#zapiet-postal-code');
     const resultDiv = this.getRootElement<HTMLElement>('#zapiet-delivery-result');
     const deliveryDateField = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
-    const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
-    const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
-    const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
 
     if (!postalInput || !resultDiv) return;
 
@@ -921,12 +921,10 @@ class ZapietWidget {
   private hideDeliveryFields(): void {
     const deliveryDateField = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
     const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
-    const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
     const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
 
     if (deliveryDateField) deliveryDateField.parentElement!.parentElement!.style.display = 'none';
     if (deliveryTimeField) deliveryTimeField.parentElement!.style.display = 'none';
-    if (noteContainer) noteContainer.style.display = 'none';
     if (rateDisplay) rateDisplay.style.display = 'none';
     this.deliveryLocationsForPostal = null;
   }
@@ -934,7 +932,6 @@ class ZapietWidget {
   private setupProgressiveDelivery(data: WidgetData): void {
     const deliveryDateField = this.getRootElement<HTMLInputElement>('#zapiet-delivery-date');
     const deliveryTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-delivery-time');
-    const noteContainer = this.getRootElement<HTMLElement>('#zapiet-delivery-note-container');
     const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
 
     if (!deliveryDateField || !deliveryTimeField) return;
@@ -942,7 +939,6 @@ class ZapietWidget {
     if (deliveryTimeField) {
       deliveryTimeField.parentElement!.style.display = 'none';
     }
-    if (noteContainer) noteContainer.style.display = 'none';
     if (rateDisplay) rateDisplay.style.display = 'none';
 
     deliveryDateField.parentElement!.style.display = 'flex';
@@ -955,10 +951,6 @@ class ZapietWidget {
 
     deliveryTimeField.addEventListener('change', () => {
       if (deliveryTimeField.value) {
-        if (data.settings.enableDeliveryNote && noteContainer) {
-          noteContainer.style.display = 'block';
-        }
-        
         this.calculateDeliveryRate(data);
         
         if (rateDisplay) {
@@ -1043,8 +1035,6 @@ class ZapietWidget {
   }
 
   private setupCardSwitching(): void {
-    const deliveryBtn = this.getRootElement<HTMLElement>('#btn-delivery');
-    const pickupBtn = this.getRootElement<HTMLElement>('#btn-pickup');
     const pickupPanel = this.getRootElement<HTMLElement>('#panel-pickup');
     const deliveryPanel = this.getRootElement<HTMLElement>('#panel-delivery');
     
@@ -1211,18 +1201,14 @@ class ZapietWidget {
     const locationInput    = document.getElementById('attr-location')       as HTMLInputElement;
     const dateInput        = document.getElementById('attr-date')           as HTMLInputElement;
     const timeInput        = document.getElementById('attr-time')           as HTMLInputElement;
-    const pickupNoteInput  = document.getElementById('attr-pickup-note')    as HTMLInputElement;
     const postalCodeInput  = document.getElementById('attr-postal-code')    as HTMLInputElement;
-    const deliveryNoteInput = document.getElementById('attr-delivery-note') as HTMLInputElement;
 
     if (orderNoteInput?.value)    attributes['_zapiet_order_note']    = orderNoteInput.value;
     if (methodInput?.value)       attributes['_zapiet_method']         = methodInput.value;
     if (locationInput?.value)     attributes['_zapiet_location']       = locationInput.value;
     if (dateInput?.value)         attributes['_zapiet_date']           = dateInput.value;
     if (timeInput?.value)         attributes['_zapiet_time']           = timeInput.value;
-    if (pickupNoteInput?.value)   attributes['_zapiet_pickup_note']    = pickupNoteInput.value;
     if (postalCodeInput?.value)   attributes['_zapiet_postal_code']    = postalCodeInput.value;
-    if (deliveryNoteInput?.value) attributes['_zapiet_delivery_note']  = deliveryNoteInput.value;
     return attributes;
   }
 

@@ -91,16 +91,15 @@
       
       <div class="zapiet-content" style="display:none;">
         <div class="zapiet-order-note-block">
-          <label class="zapiet-label zapiet-note-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="12" y1="18" x2="12" y2="12"></line>
-              <line x1="9" y1="15" x2="15" y2="15"></line>
+          <button type="button" id="zapiet-order-note-toggle" class="zapiet-order-note-toggle" aria-expanded="false" aria-controls="zapiet-order-note-content">
+            <span class="zapiet-order-note-toggle-label">Add order note</span>
+            <svg class="zapiet-order-note-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
-            Order note (optional)
-          </label>
-          <textarea id="zapiet-order-note" class="zapiet-input" rows="3" placeholder="Add instructions for your order..." style="width: 100%; resize: vertical;"></textarea>
+          </button>
+          <div id="zapiet-order-note-content" class="zapiet-order-note-content" style="display:none;">
+            <textarea id="zapiet-order-note" class="zapiet-input" rows="3" placeholder="Add instructions for your order..." style="width: 100%; resize: vertical;"></textarea>
+          </div>
         </div>
         
         <div class="zapiet-method-selector" id="zapiet-method-selector">
@@ -140,18 +139,6 @@
               </div>
             </div>
             
-            <div id="zapiet-pickup-note-container" style="display:none; margin-top: 15px;">
-              <label class="zapiet-label" style="display: flex; align-items: center; gap: 8px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                Pickup Note (optional):
-              </label>
-              <textarea id="zapiet-pickup-note" class="zapiet-input" rows="3" placeholder="Any special instructions..."></textarea>
-            </div>
           </div>
           
           <div id="zapiet-pickup-rate" class="zapiet-rate-display" style="display:none;"></div>
@@ -184,19 +171,6 @@
                   <option value="">Select time...</option>
                 </select>
               </div>
-            </div>
-            
-            <div id="zapiet-delivery-note-container" style="display:none; margin-top: 15px;">
-              <label class="zapiet-label" style="display: flex; align-items: center; gap: 8px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                Delivery Note (optional):
-              </label>
-              <textarea id="zapiet-delivery-note" class="zapiet-input" rows="3" placeholder="Special delivery instructions..."></textarea>
             </div>
             
             <div id="zapiet-delivery-rate" class="zapiet-rate-display" style="display:none; margin-top: 15px;"></div>
@@ -232,10 +206,8 @@
       <input type="hidden" ${isForm ? 'name="attributes[Pickup Location]"' : ''} id="attr-location" value="" />
       <input type="hidden" ${isForm ? 'name="attributes[Pickup Date]"' : ''} id="attr-date" value="" />
       <input type="hidden" ${isForm ? 'name="attributes[Pickup Time]"' : ''} id="attr-time" value="" />
-      <input type="hidden" ${isForm ? 'name="attributes[Pickup Note]"' : ''} id="attr-pickup-note" value="" />
       <input type="hidden" ${isForm ? 'name="attributes[Delivery Address]"' : ''} id="attr-delivery-address" value="" />
       <input type="hidden" ${isForm ? 'name="attributes[Postal Code]"' : ''} id="attr-postal-code" value="" />
-      <input type="hidden" ${isForm ? 'name="attributes[Delivery Note]"' : ''} id="attr-delivery-note" value="" />
     `;
 
     parent.appendChild(tempDiv);
@@ -706,11 +678,52 @@
 }
 
   .zapiet-order-note-block {
-    margin-bottom: 16px;
+    margin: 0 0 14px;
+    padding: 14px 0;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
   }
 
   .zapiet-note-label {
     color: #111827;
+  }
+
+  .zapiet-order-note-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: none;
+    background: transparent;
+    padding: 2px 0;
+    color: #4b5563;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .zapiet-order-note-toggle:focus-visible {
+    outline: none;
+    box-shadow: inset 0 -2px 0 var(--zapiet-primary-color, #008060);
+  }
+
+  .zapiet-order-note-chevron {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+    color: #6b7280;
+    width: 18px;
+    height: 18px;
+  }
+
+  .zapiet-order-note-toggle[aria-expanded="true"] .zapiet-order-note-chevron {
+    transform: rotate(180deg);
+  }
+
+  .zapiet-order-note-content {
+    margin-top: 10px;
   }
 
   .zapiet-helper-text {
@@ -744,39 +757,36 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
   }
   
   .zapiet-method-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    gap: 6px;
-    padding: 16px 14px;
-    border: 2px solid #e5e7eb;
-    border-radius: 10px;
-    background: #fff;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #f3f4f6;
     cursor: pointer;
-    transition: all 0.2s ease;
-    min-height: 116px;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    min-height: 64px;
     position: relative;
     z-index: 1;
     text-align: center;
   }
   
   .zapiet-method-card:hover {
-    border-color: var(--zapiet-primary-color, #008060);
-    background: #f9fafb;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-color: #9ca3af;
+    background: #eef0f2;
   }
   
   .zapiet-method-card.active {
     border-color: var(--zapiet-primary-color, #008060);
-    background: #ecfdf5;
-    border-width: 2px;
-    box-shadow: 0 0 0 1px rgba(0, 128, 96, 0.18);
+    background: #eef6f3;
+    box-shadow: none;
   }
 
   .zapiet-method-card:focus-visible {
@@ -785,9 +795,9 @@
   }
   
   .zapiet-method-icon {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 8px;
+    width: 24px;
+    height: 24px;
+    margin-bottom: 2px;
     color: #6b7280;
     transition: color 0.2s;
   }
@@ -798,17 +808,15 @@
   }
   
   .zapiet-method-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: #111827;
+    font-size: 15px;
+    font-weight: 500;
+    color: #4b5563;
     text-align: center;
+    line-height: 1.3;
   }
 
   .zapiet-method-caption {
-    font-size: 12px;
-    line-height: 1.35;
-    color: #6b7280;
-    text-align: center;
+    display: none;
   }
   
   .zapiet-container {
