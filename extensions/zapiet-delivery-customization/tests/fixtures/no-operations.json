@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "export": "cart-delivery-options-transform-run",
+    "target": "cart.delivery-options.transform.run",
+    "input": {
+      "cart": {
+        "attribute": null,
+        "deliveryGroups": []
+      }
+    },
+    "output": {
+      "operations": []
+    }
+  }
+}

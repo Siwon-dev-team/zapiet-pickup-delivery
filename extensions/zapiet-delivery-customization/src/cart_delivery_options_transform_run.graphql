@@ -1,0 +1,13 @@
+query CartDeliveryOptionsTransformRunInput {
+  cart {
+    attribute(key: "_zapiet_method") {
+      value
+    }
+    deliveryGroups {
+      deliveryOptions {
+        handle
+        code
+      }
+    }
+  }
+}

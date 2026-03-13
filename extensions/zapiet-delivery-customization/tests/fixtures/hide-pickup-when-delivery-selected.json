@@ -1,0 +1,36 @@
+{
+  "payload": {
+    "export": "cart-delivery-options-transform-run",
+    "target": "cart.delivery-options.transform.run",
+    "input": {
+      "cart": {
+        "attribute": {
+          "value": "Delivery|8"
+        },
+        "deliveryGroups": [
+          {
+            "deliveryOptions": [
+              {
+                "handle": "zapiet-pickup-handle",
+                "code": "pickup_1"
+              },
+              {
+                "handle": "zapiet-delivery-handle",
+                "code": "delivery_1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "deliveryOptionHide": {
+            "deliveryOptionHandle": "zapiet-pickup-handle"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "Zapiet Delivery Customization"
+handle = "zapiet-delivery-customization"
+type = "function"
+uid = "6dde6db8-6d8c-8003-c399-e5e88984993d985465d3"
+description = "Filter checkout delivery options based on selected Zapiet method"
+
+  [[extensions.targeting]]
+  target = "cart.delivery-options.transform.run"
+  input_query = "src/cart_delivery_options_transform_run.graphql"
+  export = "cart-delivery-options-transform-run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"
