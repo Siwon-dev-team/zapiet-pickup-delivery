@@ -1,7 +1,26 @@
-import type {
-  CartDeliveryOptionsTransformRunInput,
-  CartDeliveryOptionsTransformRunResult,
-} from "../generated/api";
+type CartDeliveryOption = {
+  handle: string;
+  code?: string | null;
+};
+
+type CartDeliveryGroup = {
+  deliveryOptions: CartDeliveryOption[];
+};
+
+type CartDeliveryOptionsTransformRunInput = {
+  cart: {
+    attribute?: { value?: string | null } | null;
+    deliveryGroups: CartDeliveryGroup[];
+  };
+};
+
+type CartDeliveryOptionsTransformRunResult = {
+  operations: Array<{
+    deliveryOptionHide: {
+      deliveryOptionHandle: string;
+    };
+  }>;
+};
 
 const NO_CHANGES: CartDeliveryOptionsTransformRunResult = {
   operations: [],
