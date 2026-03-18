@@ -22,6 +22,7 @@ import {
   ChoiceList,
   Tabs,
   Divider,
+  Select,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -219,6 +220,8 @@ type ActivationConditions = {
   deliveryZones?: string[];
 };
 
+type FulfillmentSelection = "pickup_delivery" | "pickup" | "delivery";
+
 export default function LocationsPage() {
   const { locations } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<FetcherData>();
@@ -332,16 +335,48 @@ export default function LocationsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  const getFulfillmentSelection = (
+    pickupEnabled: boolean,
+    deliveryEnabled: boolean,
+  ): FulfillmentSelection => {
+    if (pickupEnabled && deliveryEnabled) return "pickup_delivery";
+    if (pickupEnabled) return "pickup";
+    if (deliveryEnabled) return "delivery";
+    return "pickup_delivery";
+  };
+
+  const fulfillmentSelection = getFulfillmentSelection(isPickup, isDelivery);
+
+  const applyFulfillmentSelection = (value: string) => {
+    const selected = value as FulfillmentSelection;
+    if (selected === "pickup_delivery") {
+      setIsPickup(true);
+      setIsDelivery(true);
+      return;
+    }
+    if (selected === "pickup") {
+      setIsPickup(true);
+      setIsDelivery(false);
+      return;
+    }
+    setIsPickup(false);
+    setIsDelivery(true);
+  };
+
   const handleOpenModal = (location?: any) => {
     if (location) {
+      const pickupEnabled = !!location.isPickup;
+      const deliveryEnabled = !!location.isDelivery;
+      const hasMethod = pickupEnabled || deliveryEnabled;
+
       setEditingLocation(location);
       setName(location.name);
       setAddress(location.address || "");
       setCity(location.city || "");
       setZip(location.zip || "");
       setCountry(location.country || "");
-      setIsPickup(location.isPickup);
-      setIsDelivery(location.isDelivery);
+      setIsPickup(hasMethod ? pickupEnabled : true);
+      setIsDelivery(hasMethod ? deliveryEnabled : true);
       setBusinessHours(location.businessHours || "{}");
       const pickupConditions = parseConditions(
         location.pickupActivationConditions,
@@ -484,6 +519,10 @@ export default function LocationsPage() {
   };
 
   const handleSave = () => {
+    const hasMethodSelected = isPickup || isDelivery;
+    const pickupEnabled = hasMethodSelected ? isPickup : true;
+    const deliveryEnabled = hasMethodSelected ? isDelivery : true;
+
     const formData = new FormData();
     formData.append("_action", editingLocation ? "update" : "create");
     if (editingLocation) {
@@ -494,8 +533,8 @@ export default function LocationsPage() {
     formData.append("city", city);
     formData.append("zip", zip);
     formData.append("country", country);
-    formData.append("isPickup", String(isPickup));
-    formData.append("isDelivery", String(isDelivery));
+    formData.append("isPickup", String(pickupEnabled));
+    formData.append("isDelivery", String(deliveryEnabled));
     formData.append("businessHours", businessHours);
     formData.append(
       "pickupActivationConditions",
@@ -919,100 +958,104 @@ export default function LocationsPage() {
               />
             </InlineStack>
 
-            <Checkbox
-              label="Enable Store Pickup"
-              checked={isPickup}
-              onChange={setIsPickup}
+            <Select
+              label="Fulfillment method"
+              options={[
+                { label: "Pickup + Delivery", value: "pickup_delivery" },
+                { label: "Pickup only", value: "pickup" },
+                { label: "Delivery only", value: "delivery" },
+              ]}
+              value={fulfillmentSelection}
+              onChange={applyFulfillmentSelection}
+              helpText="Choose which methods this location supports. At least one method is always required."
             />
 
-            <Checkbox
-              label="Enable Local Delivery"
-              checked={isDelivery}
-              onChange={setIsDelivery}
-            />
+            {isPickup && (
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm">
+                  Pickup Conditions
+                </Text>
+                <InlineStack gap="300">
+                  <TextField
+                    label="Min Order ($)"
+                    type="number"
+                    value={pickupMinOrder}
+                    onChange={setPickupMinOrder}
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="Max Order ($)"
+                    type="number"
+                    value={pickupMaxOrder}
+                    onChange={setPickupMaxOrder}
+                    autoComplete="off"
+                  />
+                </InlineStack>
+                <InlineStack gap="300">
+                  <TextField
+                    label="Min Weight (kg)"
+                    type="number"
+                    value={pickupMinWeight}
+                    onChange={setPickupMinWeight}
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="Max Weight (kg)"
+                    type="number"
+                    value={pickupMaxWeight}
+                    onChange={setPickupMaxWeight}
+                    autoComplete="off"
+                  />
+                </InlineStack>
+              </BlockStack>
+            )}
 
-            <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">
-                Pickup Conditions
-              </Text>
-              <InlineStack gap="300">
+            {isDelivery && (
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm">
+                  Delivery Conditions
+                </Text>
+                <InlineStack gap="300">
+                  <TextField
+                    label="Min Order ($)"
+                    type="number"
+                    value={deliveryMinOrder}
+                    onChange={setDeliveryMinOrder}
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="Max Order ($)"
+                    type="number"
+                    value={deliveryMaxOrder}
+                    onChange={setDeliveryMaxOrder}
+                    autoComplete="off"
+                  />
+                </InlineStack>
+                <InlineStack gap="300">
+                  <TextField
+                    label="Min Weight (kg)"
+                    type="number"
+                    value={deliveryMinWeight}
+                    onChange={setDeliveryMinWeight}
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="Max Weight (kg)"
+                    type="number"
+                    value={deliveryMaxWeight}
+                    onChange={setDeliveryMaxWeight}
+                    autoComplete="off"
+                  />
+                </InlineStack>
                 <TextField
-                  label="Min Order ($)"
-                  type="number"
-                  value={pickupMinOrder}
-                  onChange={setPickupMinOrder}
+                  label="Delivery Zones (comma-separated)"
+                  value={deliveryZones}
+                  onChange={setDeliveryZones}
                   autoComplete="off"
+                  helpText="Use postal code prefixes or full codes (e.g., V2R, V2R 1A1)"
                 />
-                <TextField
-                  label="Max Order ($)"
-                  type="number"
-                  value={pickupMaxOrder}
-                  onChange={setPickupMaxOrder}
-                  autoComplete="off"
-                />
-              </InlineStack>
-              <InlineStack gap="300">
-                <TextField
-                  label="Min Weight (kg)"
-                  type="number"
-                  value={pickupMinWeight}
-                  onChange={setPickupMinWeight}
-                  autoComplete="off"
-                />
-                <TextField
-                  label="Max Weight (kg)"
-                  type="number"
-                  value={pickupMaxWeight}
-                  onChange={setPickupMaxWeight}
-                  autoComplete="off"
-                />
-              </InlineStack>
-            </BlockStack>
-
-            <BlockStack gap="200">
-              <Text as="h3" variant="headingSm">
-                Delivery Conditions
-              </Text>
-              <InlineStack gap="300">
-                <TextField
-                  label="Min Order ($)"
-                  type="number"
-                  value={deliveryMinOrder}
-                  onChange={setDeliveryMinOrder}
-                  autoComplete="off"
-                />
-                <TextField
-                  label="Max Order ($)"
-                  type="number"
-                  value={deliveryMaxOrder}
-                  onChange={setDeliveryMaxOrder}
-                  autoComplete="off"
-                />
-              </InlineStack>
-              <InlineStack gap="300">
-                <TextField
-                  label="Min Weight (kg)"
-                  type="number"
-                  value={deliveryMinWeight}
-                  onChange={setDeliveryMinWeight}
-                  autoComplete="off"
-                />
-                <TextField
-                  label="Max Weight (kg)"
-                  type="number"
-                  value={deliveryMaxWeight}
-                  onChange={setDeliveryMaxWeight}
-                  autoComplete="off"
-                />
-              </InlineStack>
-              <TextField
-                label="Delivery Zones (comma-separated)"
-                value={deliveryZones}
-                onChange={setDeliveryZones}
-                autoComplete="off"
-                helpText="Use postal code prefixes or full codes (e.g., V2R, V2R 1A1)"
-              />
-            </BlockStack>
+              </BlockStack>
+            )}
 
             <BlockStack gap="300">
               <InlineStack align="space-between">
@@ -1074,15 +1117,16 @@ export default function LocationsPage() {
               )}
             </BlockStack>
 
-            <div
-              style={{
-                border: "1px solid #e1e3e5",
-                borderRadius: "12px",
-                padding: "16px",
-                background: "#ffffff",
-              }}
-            >
-              <BlockStack gap="200">
+            {isPickup && (
+              <div
+                style={{
+                  border: "1px solid #e1e3e5",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  background: "#ffffff",
+                }}
+              >
+                <BlockStack gap="200">
                 <Text as="h3" variant="headingSm">
                   Pickup Availability
                 </Text>
@@ -1287,18 +1331,20 @@ export default function LocationsPage() {
                   helpText="Comma-separated tags for pickup orders from this location"
                   placeholder="Store Pickup, Click & Collect"
                 />
-              </BlockStack>
-            </div>
+                </BlockStack>
+              </div>
+            )}
 
-            <div
-              style={{
-                border: "1px solid #e1e3e5",
-                borderRadius: "12px",
-                padding: "16px",
-                background: "#ffffff",
-              }}
-            >
-              <BlockStack gap="200">
+            {isDelivery && (
+              <div
+                style={{
+                  border: "1px solid #e1e3e5",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  background: "#ffffff",
+                }}
+              >
+                <BlockStack gap="200">
                 <Text as="h3" variant="headingSm">
                   Delivery Availability
                 </Text>
@@ -1505,8 +1551,9 @@ export default function LocationsPage() {
                   helpText="Comma-separated tags for delivery orders from this location"
                   placeholder="Local Delivery"
                 />
-              </BlockStack>
-            </div>
+                </BlockStack>
+              </div>
+            )}
 
             <BlockStack gap="200">
               <Text as="h3" variant="headingSm">

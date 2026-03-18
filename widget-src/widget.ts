@@ -1084,6 +1084,11 @@ class ZapietWidget {
     }
   }
 
+  private getSameWeekDaysOrFallback(sameWeekDaysJson: string, fallback: string[] = []): string[] {
+    const parsed = this.parseSameWeekDays(sameWeekDaysJson);
+    return parsed.length > 0 ? parsed : fallback;
+  }
+
   private getPickupMinDate(location: Location): Date {
     const today = new Date();
     const minDate = new Date();
@@ -1140,7 +1145,10 @@ class ZapietWidget {
       const currentDay = today.getDay();
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const currentDayName = dayNames[currentDay];
-      const sameWeekDays = this.parseSameWeekDays(sameWeekDaysJson);
+      const sameWeekDays = this.getSameWeekDaysOrFallback(
+        sameWeekDaysJson,
+        ['saturday', 'sunday'],
+      );
       
       if (!sameWeekDays.includes(currentDayName)) {
         const nextWeek = new Date();
