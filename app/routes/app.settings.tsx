@@ -78,11 +78,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     preselectLocation: formData.get("preselectLocation") as string,
     locationSortOrder: formData.get("locationSortOrder") as string,
     fallbackRate: parseFloat(formData.get("fallbackRate") as string) || 0,
-    deliveryTimeSlots: formData.get("deliveryTimeSlots") as string,
     enablePickupNextWeekOnly: formData.get("enablePickupNextWeekOnly") === "on",
     pickupNextWeekSameWeekDays: formData.get("pickupNextWeekSameWeekDays") as string || "[]",
-    enableDeliveryNextWeekOnly: formData.get("enableDeliveryNextWeekOnly") === "on",
-    deliveryNextWeekSameWeekDays: formData.get("deliveryNextWeekSameWeekDays") as string || "[]",
   };
 
   await db.settings.upsert({
@@ -117,14 +114,8 @@ export default function SettingsPage() {
   const [locationSortOrder, setLocationSortOrder] = useState(settings.locationSortOrder || "newest");
   const [postalCodeValidation, setPostalCodeValidation] = useState(settings.postalCodeValidation || "none");
   const [fallbackRate, setFallbackRate] = useState(String(settings.fallbackRate || 0));
-  const [deliveryTimeSlots, setDeliveryTimeSlots] = useState(
-    settings.deliveryTimeSlots ||
-      "9:00 AM - 12:00 PM,12:00 PM - 3:00 PM,3:00 PM - 6:00 PM,5:00 PM - 11:00 PM"
-  );
   const [enablePickupNextWeekOnly, setEnablePickupNextWeekOnly] = useState(settings.enablePickupNextWeekOnly || false);
   const [pickupNextWeekSameWeekDays, setPickupNextWeekSameWeekDays] = useState(settings.pickupNextWeekSameWeekDays || "[]");
-  const [enableDeliveryNextWeekOnly, setEnableDeliveryNextWeekOnly] = useState(settings.enableDeliveryNextWeekOnly || false);
-  const [deliveryNextWeekSameWeekDays, setDeliveryNextWeekSameWeekDays] = useState(settings.deliveryNextWeekSameWeekDays || "[]");
 
   const handleSubmit = () => {
     const form = document.querySelector('form');
@@ -328,16 +319,6 @@ export default function SettingsPage() {
                 />
 
                 <TextField
-                  label="Delivery Time Slots"
-                  name="deliveryTimeSlots"
-                  value={deliveryTimeSlots}
-                  onChange={setDeliveryTimeSlots}
-                  autoComplete="off"
-                  helpText="Comma-separated time ranges shown in the delivery dropdown"
-                  placeholder="9:00 AM - 12:00 PM, 12:00 PM - 3:00 PM"
-                />
-                
-                <TextField
                   label="Auto-Tag Delivery Orders"
                   name="autoTagDelivery"
                   value={autoTagDelivery}
@@ -346,69 +327,6 @@ export default function SettingsPage() {
                   placeholder="delivery, local-delivery"
                   helpText="Comma-separated tags to add to delivery orders"
                 />
-                
-                <Divider />
-                
-                <Text as="h3" variant="headingSm">Delivery Next Week Only</Text>
-                
-                {enableDeliveryNextWeekOnly && (
-                  <Banner tone="warning">
-                    <p><strong>Important:</strong> This setting will override other date-related restrictions (like blackout dates and max days in advance). The delivery date minimum will be enforced at 7+ days for non-exception days.</p>
-                  </Banner>
-                )}
-                
-                <Checkbox
-                  label="Enable Delivery Next Week Only"
-                  checked={enableDeliveryNextWeekOnly}
-                  onChange={setEnableDeliveryNextWeekOnly}
-                  helpText="Force all deliveries to be scheduled for next week (except for selected same-week days)"
-                />
-                <input type="hidden" name="enableDeliveryNextWeekOnly" value={enableDeliveryNextWeekOnly ? "on" : "off"} />
-                
-                {enableDeliveryNextWeekOnly && (
-                  <>
-                    <Banner tone="info">
-                      <p>Select which days allow same-week delivery. All other days will require next week delivery.</p>
-                    </Banner>
-                    
-                    <BlockStack gap="200">
-                      <Text as="p" variant="bodyMd" fontWeight="semibold">Same-Week Delivery Days:</Text>
-                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                        const dayLower = day.toLowerCase();
-                        let selectedDays: string[] = [];
-                        try {
-                          selectedDays = JSON.parse(deliveryNextWeekSameWeekDays);
-                        } catch (e) {
-                          selectedDays = [];
-                        }
-                        const isChecked = selectedDays.includes(dayLower);
-                        
-                        return (
-                          <Checkbox
-                            key={day}
-                            label={day}
-                            checked={isChecked}
-                            onChange={(checked) => {
-                              const current = [...selectedDays];
-                              if (checked) {
-                                if (!current.includes(dayLower)) {
-                                  current.push(dayLower);
-                                }
-                              } else {
-                                const index = current.indexOf(dayLower);
-                                if (index > -1) {
-                                  current.splice(index, 1);
-                                }
-                              }
-                              setDeliveryNextWeekSameWeekDays(JSON.stringify(current));
-                            }}
-                          />
-                        );
-                      })}
-                    </BlockStack>
-                  </>
-                )}
-                <input type="hidden" name="deliveryNextWeekSameWeekDays" value={deliveryNextWeekSameWeekDays} />
                 
                 <Divider />
                 
@@ -461,43 +379,6 @@ export default function SettingsPage() {
             </Card>
           </Layout.Section>
 
-          <Layout.Section>
-            <Card>
-              <BlockStack gap="400">
-                <Text as="h2" variant="headingMd">Integration Guide</Text>
-                
-                <BlockStack gap="300">
-                  <div>
-                    <Text as="p" fontWeight="semibold">Activation Conditions:</Text>
-                    <Text as="p" tone="subdued">
-                      Conditions are configured per location. Use the Locations page to set pickup
-                      and delivery limits with the simple form inputs.
-                    </Text>
-                  </div>
-                  
-                  <div>
-                    <Text as="p" fontWeight="semibold">Sample Data For Testing:</Text>
-                    <Text as="p" tone="subdued">
-                      Use the sample values below to quickly trigger pickup and delivery in the widget.
-                    </Text>
-                    <div style={{
-                      background: "#f6f6f7",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      fontFamily: "monospace",
-                      fontSize: "12px",
-                      marginTop: "8px"
-                    }}>
-                      <div>Sample address: 45585 Luckakuck Way, Chilliwack, BC V2R 1A1</div>
-                      <div>Sample order total: $29.99+</div>
-                      <div>Sample delivery zone: V2R (partial) or V2R 1A1 (full)</div>
-                      <div>Sample pickup time slot: 5:00 PM - 11:00 PM</div>
-                    </div>
-                  </div>
-                </BlockStack>
-              </BlockStack>
-            </Card>
-          </Layout.Section>
         </Layout>
       </Form>
     </Page>

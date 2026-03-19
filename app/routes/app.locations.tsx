@@ -1508,7 +1508,6 @@ export default function LocationsPage() {
                     onChange={setDeliveryPreparationDays}
                     autoComplete="off"
                     helpText="Days notice required"
-                    disabled={deliveryNextWeekOnly}
                   />
                   <TextField
                     label="Max Days in Advance"
@@ -1516,7 +1515,6 @@ export default function LocationsPage() {
                     value={deliveryMaxDaysInAdvance}
                     onChange={setDeliveryMaxDaysInAdvance}
                     autoComplete="off"
-                    disabled={deliveryNextWeekOnly}
                   />
                 </InlineStack>
                 <InlineStack gap="300">

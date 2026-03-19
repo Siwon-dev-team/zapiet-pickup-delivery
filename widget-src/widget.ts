@@ -232,6 +232,27 @@ class ZapietWidget {
     return `${year}-${month}-${day}`;
   }
 
+  private parseYMDToLocalDate(value: string): Date {
+    const [yearStr, monthStr, dayStr] = value.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+
+    if (
+      Number.isNaN(year) ||
+      Number.isNaN(month) ||
+      Number.isNaN(day) ||
+      month < 1 ||
+      month > 12 ||
+      day < 1 ||
+      day > 31
+    ) {
+      return new Date(value);
+    }
+
+    return new Date(year, month - 1, day);
+  }
+
   private getCalendarAppendTarget(): HTMLElement {
     const dialog = this.root.closest<HTMLElement>('dialog');
     if (dialog) {
@@ -539,15 +560,10 @@ class ZapietWidget {
     const pickupChecks = pickupLocations.map(loc =>
       this.checkActivationConditions(loc.pickupActivationConditions)
     );
-    const deliveryChecks = deliveryLocations.map(loc =>
-      this.checkActivationConditions(loc.deliveryActivationConditions)
-    );
-
     this.eligiblePickupLocations = pickupLocations.filter((_, index) => pickupChecks[index].valid);
-    this.eligibleDeliveryLocations = deliveryLocations.filter((_, index) => deliveryChecks[index].valid);
+    this.eligibleDeliveryLocations = deliveryLocations;
 
     const pickupCheckMessage = pickupChecks.find(check => !check.valid)?.message;
-    const deliveryCheckMessage = deliveryChecks.find(check => !check.valid)?.message;
 
     let hasValidMethod = false;
     
@@ -579,7 +595,6 @@ class ZapietWidget {
       if (errorDiv) {
         errorDiv.textContent =
           pickupCheckMessage ||
-          deliveryCheckMessage ||
           'No shipping options available for your cart.';
         errorDiv.style.display = 'block';
       }
@@ -721,7 +736,7 @@ class ZapietWidget {
     
     let dayName = '';
     if (selectedDate) {
-      const date = new Date(selectedDate);
+      const date = this.parseYMDToLocalDate(selectedDate);
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       dayName = dayNames[date.getDay()];
     }
@@ -774,20 +789,45 @@ class ZapietWidget {
     });
   }
 
+  private getRateThresholdMessage(rates: Rate[], methodLabel: 'Pickup' | 'Delivery'): string {
+    const priceRates = rates.filter((rate) => rate.type === 'PRICE');
+    if (priceRates.length > 0) {
+      const minOrder = Math.min(...priceRates.map((rate) => rate.min));
+      if (this.cartTotal < minOrder) {
+        return `Minimum order for ${methodLabel.toLowerCase()} is $${minOrder.toFixed(2)}. Current: $${this.cartTotal.toFixed(2)}.`;
+      }
+    }
+
+    const weightRates = rates.filter((rate) => rate.type === 'WEIGHT');
+    if (weightRates.length > 0) {
+      const minWeight = Math.min(...weightRates.map((rate) => rate.min));
+      if (this.cartWeight < minWeight) {
+        return `Minimum weight for ${methodLabel.toLowerCase()} is ${minWeight.toFixed(2)}kg. Current: ${this.cartWeight.toFixed(2)}kg.`;
+      }
+    }
+
+    return `No ${methodLabel.toLowerCase()} rate is available for your current cart total/weight.`;
+  }
+
+  private getApplicableRate(rates: Rate[]): Rate | undefined {
+    return rates.find((rate) => {
+      if (rate.type === 'PRICE') {
+        return this.cartTotal >= rate.min && (!rate.max || this.cartTotal <= rate.max);
+      }
+      if (rate.type === 'WEIGHT') {
+        return this.cartWeight >= rate.min && (!rate.max || this.cartWeight <= rate.max);
+      }
+      return false;
+    });
+  }
+
   private calculatePickupRate(locationId: string, rates: Rate[]): void {
     const pickupRates = rates.filter(r => r.locationId === locationId);
     const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-pickup-rate');
     if (!rateDisplay || !this.data) return;
 
     if (pickupRates.length > 0) {
-      const applicableRate = pickupRates.find(r => {
-        if (r.type === 'PRICE') {
-          return this.cartTotal >= r.min && (!r.max || this.cartTotal <= r.max);
-        } else if (r.type === 'WEIGHT') {
-          return this.cartWeight >= r.min && (!r.max || this.cartWeight <= r.max);
-        }
-        return false;
-      });
+      const applicableRate = this.getApplicableRate(pickupRates);
 
       if (applicableRate) {
         const price = applicableRate.price === 0 ? 'FREE' : `$${applicableRate.price.toFixed(2)}`;
@@ -795,10 +835,10 @@ class ZapietWidget {
         rateDisplay.style.display = 'block';
         this.setMethodAttribute(`Pickup|${applicableRate.price || 0}`);
       } else {
-        const fallback = this.data.settings.fallbackRate || 0;
-        rateDisplay.innerHTML = `<strong>Pickup Rate:</strong> $${fallback.toFixed(2)}`;
+        const message = this.getRateThresholdMessage(pickupRates, 'Pickup');
+        rateDisplay.innerHTML = `<div class="zapiet-error-msg">${message}</div>`;
         rateDisplay.style.display = 'block';
-        this.setMethodAttribute(`Pickup|${fallback}`);
+        this.setMethodAttribute('Pickup');
       }
     } else {
       rateDisplay.style.display = 'none';
@@ -852,6 +892,23 @@ class ZapietWidget {
     const isValid = matchingLocations.length > 0;
 
     if (isValid) {
+      const deliveryRatesForLocations: Rate[] = [];
+      matchingLocations.forEach((location) => {
+        const locationRates = data.rates.filter((rate) => rate.locationId === location.id);
+        deliveryRatesForLocations.push(...locationRates);
+      });
+
+      if (
+        deliveryRatesForLocations.length > 0 &&
+        !this.getApplicableRate(deliveryRatesForLocations)
+      ) {
+        const message = this.getRateThresholdMessage(deliveryRatesForLocations, 'Delivery');
+        resultDiv.innerHTML = `<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>${message}</div>`;
+        this.deliveryLocationsForPostal = null;
+        this.hideDeliveryFields();
+        return;
+      }
+
       resultDiv.innerHTML = '<div class="zapiet-success-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Great! You are eligible for delivery.</div>';
       this.deliveryLocationsForPostal = matchingLocations;
       
@@ -887,7 +944,7 @@ class ZapietWidget {
         deliveryDateField.dataset.allowedDays = JSON.stringify(allowedDays);
 
         const minDateStr = this.getDeliveryMinDate();
-        const minDate = new Date(minDateStr);
+        const minDate = this.parseYMDToLocalDate(minDateStr);
         
         let maxDate: Date | undefined;
         if (location.deliveryMaxDaysInAdvance) {
@@ -1008,14 +1065,7 @@ class ZapietWidget {
     if (!rateDisplay) return;
 
     if (deliveryRates.length > 0) {
-      const applicableRate = deliveryRates.find(r => {
-        if (r.type === 'PRICE') {
-          return this.cartTotal >= r.min && (!r.max || this.cartTotal <= r.max);
-        } else if (r.type === 'WEIGHT') {
-          return this.cartWeight >= r.min && (!r.max || this.cartWeight <= r.max);
-        }
-        return false;
-      });
+      const applicableRate = this.getApplicableRate(deliveryRates);
 
       if (applicableRate) {
         const price = applicableRate.price === 0 ? 'FREE' : `$${applicableRate.price.toFixed(2)}`;
@@ -1023,10 +1073,10 @@ class ZapietWidget {
         rateDisplay.style.display = 'block';
         this.setMethodAttribute(`Delivery|${applicableRate.price || 0}`);
       } else {
-        const fallback = data.settings.fallbackRate || 0;
-        rateDisplay.innerHTML = `<strong>Delivery Rate:</strong> $${fallback.toFixed(2)}`;
+        const message = this.getRateThresholdMessage(deliveryRates, 'Delivery');
+        rateDisplay.innerHTML = `<div class="zapiet-error-msg">${message}</div>`;
         rateDisplay.style.display = 'block';
-        this.setMethodAttribute(`Delivery|${fallback}`);
+        this.setMethodAttribute('Delivery');
       }
     } else {
       rateDisplay.style.display = 'none';
@@ -1125,8 +1175,8 @@ class ZapietWidget {
     tomorrow.setDate(tomorrow.getDate() + 1);
     let minDate = this.toLocalDateString(tomorrow);
 
-    let enableNextWeekOnly = this.data?.settings.enableDeliveryNextWeekOnly || false;
-    let sameWeekDaysJson = this.data?.settings.deliveryNextWeekSameWeekDays || '[]';
+    let enableNextWeekOnly = false;
+    let sameWeekDaysJson = '[]';
     
     const locations = this.deliveryLocationsForPostal || this.eligibleDeliveryLocations;
     

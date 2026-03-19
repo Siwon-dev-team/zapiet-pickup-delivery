@@ -497,12 +497,22 @@
   });
 
   (function() {
+    function isCartMutationUrl(url) {
+      if (!url) return false;
+      return (
+        url.indexOf('/cart/add') !== -1 ||
+        url.indexOf('/cart/change') !== -1 ||
+        url.indexOf('/cart/update') !== -1 ||
+        url.indexOf('/cart/clear') !== -1
+      );
+    }
+
     var _origFetch = window.fetch;
     window.fetch = function() {
       var args = Array.prototype.slice.call(arguments);
       var url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
       var result = _origFetch.apply(window, args);
-      if (url && url.indexOf('/cart/add') !== -1) {
+      if (isCartMutationUrl(url)) {
         result.then(function() {
           setTimeout(function() { resetAndInjectWidget(); }, 600);
         }).catch(function() {});
@@ -518,7 +528,7 @@
     var _origSend = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.send = function() {
       var xhr = this;
-      if (xhr._zapietUrl && xhr._zapietUrl.indexOf('/cart/add') !== -1) {
+      if (isCartMutationUrl(xhr._zapietUrl || '')) {
         xhr.addEventListener('load', function() {
           setTimeout(function() { resetAndInjectWidget(); }, 600);
         });
