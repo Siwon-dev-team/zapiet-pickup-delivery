@@ -24,11 +24,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const locations = await db.location.findMany({
+  const rawLocations = await db.location.findMany({
     where: { shop },
     include: { rates: true },
     orderBy: { name: "asc" },
   });
+
+  const locations = rawLocations.map((location) => ({
+    ...location,
+    rates: location.rates.map((rate) => ({
+      ...rate,
+      method: (rate as any).method || "BOTH",
+    })),
+  }));
 
   return json({ locations });
 };
@@ -44,11 +52,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const locationId = formData.get("locationId") as string;
       const name = formData.get("name") as string;
       const type = formData.get("type") as string;
+      const method = (formData.get("method") as string) || "BOTH";
       const min = parseFloat(formData.get("min") as string);
       const max = formData.get("max") ? parseFloat(formData.get("max") as string) : null;
       const price = parseFloat(formData.get("price") as string);
 
-      const data = { locationId, name, type, min, max, price };
+      const data = { locationId, name, type, method, min, max, price };
 
       if (action === "create_rate") {
         await db.rate.create({ data });
@@ -93,9 +102,9 @@ export default function RatesPage() {
   const [editingRate, setEditingRate] = useState<any>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
 
-  // Form state
   const [rateName, setRateName] = useState("");
   const [rateType, setRateType] = useState("PRICE");
+  const [rateMethod, setRateMethod] = useState("BOTH");
   const [minVal, setMinVal] = useState("0");
   const [maxVal, setMaxVal] = useState("");
   const [price, setPrice] = useState("0");
@@ -104,18 +113,25 @@ export default function RatesPage() {
     setSelectedLocationId(locationId);
     
     if (rate) {
-      // Edit mode
       setEditingRate(rate);
       setRateName(rate.name);
       setRateType(rate.type);
+      setRateMethod(rate.method || "BOTH");
       setMinVal(String(rate.min));
       setMaxVal(rate.max ? String(rate.max) : "");
       setPrice(String(rate.price));
     } else {
-      // Create mode
+      const selectedLocation = locations.find((location) => location.id === locationId);
       setEditingRate(null);
       setRateName("");
       setRateType("PRICE");
+      if (selectedLocation?.isPickup && !selectedLocation?.isDelivery) {
+        setRateMethod("PICKUP");
+      } else if (!selectedLocation?.isPickup && selectedLocation?.isDelivery) {
+        setRateMethod("DELIVERY");
+      } else {
+        setRateMethod("BOTH");
+      }
       setMinVal("0");
       setMaxVal("");
       setPrice("0");
@@ -141,6 +157,7 @@ export default function RatesPage() {
     formData.append("locationId", selectedLocationId);
     formData.append("name", rateName);
     formData.append("type", rateType);
+    formData.append("method", rateMethod);
     formData.append("min", minVal);
     if (maxVal) formData.append("max", maxVal);
     formData.append("price", price);
@@ -199,6 +216,7 @@ export default function RatesPage() {
                     headings={[
                       { title: "Name" },
                       { title: "Type" },
+                      { title: "Applies To" },
                       { title: "Condition" },
                       { title: "Price" },
                       { title: "Actions" }
@@ -212,6 +230,15 @@ export default function RatesPage() {
                         </IndexTable.Cell>
                         <IndexTable.Cell>
                           <Badge>{rate.type}</Badge>
+                        </IndexTable.Cell>
+                        <IndexTable.Cell>
+                          <Badge tone={rate.method === "PICKUP" ? "info" : rate.method === "DELIVERY" ? "success" : undefined}>
+                            {rate.method === "PICKUP"
+                              ? "Pickup"
+                              : rate.method === "DELIVERY"
+                                ? "Delivery"
+                                : "Both"}
+                          </Badge>
                         </IndexTable.Cell>
                         <IndexTable.Cell>
                           {rate.min} - {rate.max ?? "∞"}
@@ -281,6 +308,18 @@ export default function RatesPage() {
               value={rateType}
               onChange={setRateType}
               helpText={rateType === "PRICE" ? "Based on cart total" : "Based on total weight"}
+            />
+
+            <Select
+              label="Applies To"
+              options={[
+                { label: "Pickup + Delivery", value: "BOTH" },
+                { label: "Pickup only", value: "PICKUP" },
+                { label: "Delivery only", value: "DELIVERY" },
+              ]}
+              value={rateMethod}
+              onChange={setRateMethod}
+              helpText="Choose whether this rate is used for pickup, delivery, or both."
             />
             
             <InlineStack gap="400">

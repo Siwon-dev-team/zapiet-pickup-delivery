@@ -10,9 +10,11 @@ import {
   Button,
   Select,
   InlineStack,
+  Pagination,
   useIndexResourceState,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import { useMemo, useState } from "react";
 
 type DayFilter = "all" | "7" | "14" | "30";
 type FulfillmentFilter =
@@ -182,6 +184,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function OrdersPage() {
   const { orders, filters } = useLoaderData<typeof loader>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const ORDERS_PER_PAGE = 50;
+
+  const totalPages = Math.max(1, Math.ceil(orders.length / ORDERS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (safeCurrentPage - 1) * ORDERS_PER_PAGE;
+    return orders.slice(start, start + ORDERS_PER_PAGE);
+  }, [orders, safeCurrentPage]);
+  const startItem =
+    orders.length === 0 ? 0 : (safeCurrentPage - 1) * ORDERS_PER_PAGE + 1;
+  const endItem =
+    orders.length === 0
+      ? 0
+      : Math.min(safeCurrentPage * ORDERS_PER_PAGE, orders.length);
 
   const resourceName = {
     singular: "order",
@@ -189,9 +207,9 @@ export default function OrdersPage() {
   };
 
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
-    useIndexResourceState(orders);
+    useIndexResourceState(paginatedOrders);
 
-  const rowMarkup = orders.map(
+  const rowMarkup = paginatedOrders.map(
     (
       { id, name, customer, date, status, method, pickupDate, pickupTime, locationName }: RowOrder,
       index: number
@@ -285,7 +303,7 @@ export default function OrdersPage() {
           <Card padding="0">
             <IndexTable
               resourceName={resourceName}
-              itemCount={orders.length}
+              itemCount={paginatedOrders.length}
               selectedItemsCount={
                 allResourcesSelected ? "All" : selectedResources.length
               }
@@ -303,6 +321,27 @@ export default function OrdersPage() {
               {rowMarkup}
             </IndexTable>
           </Card>
+          <div style={{ marginTop: 16 }}>
+            <InlineStack align="space-between" blockAlign="center">
+              <Text as="p" tone="subdued">
+                Showing {startItem}
+                {" - "}
+                {endItem}
+                {" of "}
+                {orders.length} orders
+              </Text>
+              <Pagination
+                hasPrevious={safeCurrentPage > 1}
+                onPrevious={() =>
+                  setCurrentPage((prev) => Math.max(1, prev - 1))
+                }
+                hasNext={safeCurrentPage < totalPages}
+                onNext={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+              />
+            </InlineStack>
+          </div>
         </Layout.Section>
       </Layout>
     </Page>

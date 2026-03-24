@@ -5,7 +5,7 @@ import type { Settings } from "@prisma/client";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
-  const shop = url.searchParams.get("shop");
+  const shop = url.searchParams.get("shop") || request.headers.get("x-shopify-shop-domain");
 
   if (!shop) {
     return json({ 
@@ -41,20 +41,29 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       orderBy
   });
   
-  const rates = await db.rate.findMany({
-      where: { 
-        location: { shop }
-      },
-      select: {
-        id: true,
-        locationId: true,
-        name: true,
-        type: true,
-        min: true,
-        max: true,
-        price: true
-      }
-    });
+  let rates: Array<{
+    id: string;
+    locationId: string;
+    name: string;
+    type: string;
+    min: number;
+    max: number | null;
+    price: number;
+  }> = [];
+  rates = await db.rate.findMany({
+    where: {
+      location: { shop },
+    },
+    select: {
+      id: true,
+      locationId: true,
+      name: true,
+      type: true,
+      min: true,
+      max: true,
+      price: true,
+    },
+  });
 
     const s = settings as any;
     
@@ -87,6 +96,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
     });
   } catch (error) {
+    console.error("[api.widget-data] Database error:", error);
     return json({ 
       error: "Database error"
     }, { 

@@ -56,7 +56,7 @@ interface ShopifyRateResponse {
   rates: Array<{
     service_name: string;
     service_code: string;
-    total_price: number; // in cents
+    total_price: number;
     description?: string;
     currency: string;
     min_delivery_date?: string;
@@ -110,7 +110,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const cartWeightGrams = body.rate.items.reduce((sum, item) => 
       sum + (item.grams * item.quantity), 0
     );
-    const cartWeight = cartWeightGrams / 1000; // Convert to kg
+    const cartWeight = cartWeightGrams / 1000;
 
     const rates: ShopifyRateResponse['rates'] = [];
 
@@ -161,9 +161,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       for (const location of pickupLocations) {
         let ratePrice = settings.fallbackRate || 0;
-        let rateName = "Free Pickup";
+        const pickupRates = location.rates.filter(
+          (rate) => (rate as any).method === "PICKUP" || (rate as any).method === "BOTH" || !(rate as any).method,
+        );
 
-        const applicableRate = location.rates.find(rate => {
+        const applicableRate = pickupRates.find(rate => {
           if (rate.type === 'PRICE') {
             return cartTotal >= rate.min && (!rate.max || cartTotal <= rate.max);
           } else if (rate.type === 'WEIGHT') {
@@ -174,16 +176,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
         if (applicableRate) {
           ratePrice = applicableRate.price;
-          rateName = applicableRate.name;
-        } else if (location.rates.length > 0) {
-          ratePrice = settings.fallbackRate || 0;
-          rateName = ratePrice === 0 ? "Free Pickup" : "Store Pickup";
+        } else if (pickupRates.length > 0) {
+          continue;
         }
 
         rates.push({
           service_name: `${settings.pickupTitle || 'Store Pickup'} - ${location.name}`,
           service_code: `pickup_${location.id}`,
-          total_price: Math.round(ratePrice * 100), // Convert to cents
+          total_price: Math.round(ratePrice * 100),
           description: `Pick up at ${location.address}${location.city ? ', ' + location.city : ''}`,
           currency: body.rate.currency,
         });
@@ -195,7 +195,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const deliveryLocations = locations.filter(loc => {
         if (!loc.isDelivery) return false;
         const conditions = parseActivationConditions(loc.deliveryActivationConditions);
-        if (!matchesCartConditions(conditions)) return false;
 
         if (settings.postalCodeValidation === "none") return true;
 
@@ -217,30 +216,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
 
       for (const location of deliveryLocations) {
-        let ratePrice = settings.fallbackRate || 0;
-        let rateName = "Free Delivery";
-
-        const applicableRate = location.rates.find(rate => {
-          if (rate.type === "PRICE") {
-            return cartTotal >= rate.min && (!rate.max || cartTotal <= rate.max);
-          } else if (rate.type === "WEIGHT") {
-            return cartWeight >= rate.min && (!rate.max || cartWeight <= rate.max);
-          }
-          return false;
-        });
-
-        if (applicableRate) {
-          ratePrice = applicableRate.price;
-          rateName = applicableRate.name;
-        } else if (location.rates.length > 0) {
-          ratePrice = settings.fallbackRate || 0;
-          rateName = ratePrice === 0 ? "Free Delivery" : "Local Delivery";
+        if (cartTotal < 50) {
+          continue;
         }
+
+        const fixedDeliveryPrice = cartTotal < 150 ? 10 : 0;
 
         rates.push({
           service_name: `${settings.deliveryTitle || "Local Delivery"} - ${location.name}`,
           service_code: `delivery_${location.id}`,
-          total_price: Math.round(ratePrice * 100), // Convert to cents
+          total_price: Math.round(fixedDeliveryPrice * 100),
           description: `Delivery to ${body.rate.destination.city || body.rate.destination.postal_code}`,
           currency: body.rate.currency,
         });

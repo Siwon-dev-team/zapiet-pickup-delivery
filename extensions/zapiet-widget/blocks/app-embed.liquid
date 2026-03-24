@@ -486,13 +486,38 @@
     setTimeout(() => injectWidget(true), 300);
   }
 
+  function refreshCartMetrics(callback) {
+    fetch('/cart.js', { credentials: 'same-origin' })
+      .then(function(response) {
+        if (!response.ok) return null;
+        return response.json();
+      })
+      .then(function(cart) {
+        if (!cart) return;
+        if (typeof cart.total_price === 'number') {
+          config.cartTotal = cart.total_price / 100;
+        }
+        if (typeof cart.total_weight === 'number') {
+          config.cartWeight = cart.total_weight / 1000;
+        }
+      })
+      .catch(function() {})
+      .finally(function() {
+        if (callback) callback();
+      });
+  }
+
+  function refreshCartAndReinject() {
+    refreshCartMetrics(function() {
+      resetAndInjectWidget();
+    });
+  }
+
   ['cart:updated', 'cart:open', 'cart:refresh', 'cart:change', 'cart-update',
    'theme:cart:updated', 'ajaxCart:updated', 'CartDrawer:open'].forEach(function(evt) {
     document.addEventListener(evt, function() {
       if (window.zapietOwnCartUpdate) return;
-      if (!document.getElementById('zapiet-widget-root')) {
-        setTimeout(function() { injectWidget(true); }, 300);
-      }
+      setTimeout(function() { refreshCartAndReinject(); }, 300);
     });
   });
 
@@ -507,14 +532,41 @@
       );
     }
 
+    function shouldSkipReinject() {
+      return !!window.zapietOwnCartUpdate;
+    }
+
+    function hasZapietHeader(init) {
+      if (!init || !init.headers) return false;
+      var headers = init.headers;
+      if (headers instanceof Headers) {
+        var fromHeaders = headers.get('X-Zapiet-Source') || headers.get('x-zapiet-source');
+        return fromHeaders === 'widget-attributes';
+      }
+      if (Array.isArray(headers)) {
+        for (var i = 0; i < headers.length; i++) {
+          var pair = headers[i];
+          if (!pair || pair.length < 2) continue;
+          if (String(pair[0]).toLowerCase() === 'x-zapiet-source' && String(pair[1]) === 'widget-attributes') {
+            return true;
+          }
+        }
+        return false;
+      }
+      var value = headers['X-Zapiet-Source'] || headers['x-zapiet-source'];
+      return value === 'widget-attributes';
+    }
+
     var _origFetch = window.fetch;
     window.fetch = function() {
       var args = Array.prototype.slice.call(arguments);
       var url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+      var init = args.length > 1 ? args[1] : null;
       var result = _origFetch.apply(window, args);
-      if (isCartMutationUrl(url)) {
+      if (isCartMutationUrl(url) && !shouldSkipReinject() && !hasZapietHeader(init)) {
         result.then(function() {
-          setTimeout(function() { resetAndInjectWidget(); }, 600);
+          if (shouldSkipReinject()) return;
+          setTimeout(function() { refreshCartAndReinject(); }, 600);
         }).catch(function() {});
       }
       return result;
@@ -528,9 +580,10 @@
     var _origSend = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.send = function() {
       var xhr = this;
-      if (isCartMutationUrl(xhr._zapietUrl || '')) {
+      if (isCartMutationUrl(xhr._zapietUrl || '') && !shouldSkipReinject()) {
         xhr.addEventListener('load', function() {
-          setTimeout(function() { resetAndInjectWidget(); }, 600);
+          if (shouldSkipReinject()) return;
+          setTimeout(function() { refreshCartAndReinject(); }, 600);
         });
       }
       return _origSend.apply(this, arguments);
@@ -633,8 +686,8 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    max-height: 60vh;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     overflow-x: hidden;
     padding: 20px;
     padding-bottom: 24px;
@@ -753,7 +806,7 @@
   @media (max-width: 749px) {
     #zapiet-widget-root {
       padding: 16px;
-      max-height: 50vh;
+      max-height: none;
     }
     
     #zapiet-widget-root[data-context="page"] {
@@ -1129,6 +1182,32 @@
     background-color: white !important;
   }
 
+  .flatpickr-day {
+    color: #111827 !important;
+    font-weight: 500;
+  }
+
+  .flatpickr-day.prevMonthDay,
+  .flatpickr-day.nextMonthDay {
+    color: #4b5563 !important;
+    opacity: 1 !important;
+  }
+
+  .flatpickr-day.flatpickr-disabled,
+  .flatpickr-day.flatpickr-disabled:hover,
+  .flatpickr-day.prevMonthDay.flatpickr-disabled,
+  .flatpickr-day.nextMonthDay.flatpickr-disabled {
+    color: #cbd5e1 !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+  }
+
+  .flatpickr-day:not(.flatpickr-disabled):hover {
+    background: #e6f4ef !important;
+    border-color: #16a34a !important;
+    color: #065f46 !important;
+  }
+
   @media (max-width: 640px) {
     #zapiet-widget-root {
       max-height: 60vh;
@@ -1234,10 +1313,6 @@
       "id": "enable_cart_drawer",
       "label": "Show widget in cart drawer",
       "default": true
-    },
-    {
-      "type": "paragraph",
-      "content": "Tip: Keep at least one placement enabled so customers can select pickup or delivery before checkout."
     }
   ]
 }

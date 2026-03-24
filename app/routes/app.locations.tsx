@@ -234,8 +234,8 @@ export default function LocationsPage() {
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
   const [country, setCountry] = useState("");
-  const [isPickup, setIsPickup] = useState(true);
-  const [isDelivery, setIsDelivery] = useState(false);
+  const [fulfillmentMethod, setFulfillmentMethod] =
+    useState<FulfillmentSelection>("pickup");
   const [businessHours, setBusinessHours] = useState("{}");
   const [showAdvancedHours, setShowAdvancedHours] = useState(false);
   const [pickupMinOrder, setPickupMinOrder] = useState("");
@@ -345,22 +345,9 @@ export default function LocationsPage() {
     return "pickup_delivery";
   };
 
-  const fulfillmentSelection = getFulfillmentSelection(isPickup, isDelivery);
-
   const applyFulfillmentSelection = (value: string) => {
     const selected = value as FulfillmentSelection;
-    if (selected === "pickup_delivery") {
-      setIsPickup(true);
-      setIsDelivery(true);
-      return;
-    }
-    if (selected === "pickup") {
-      setIsPickup(true);
-      setIsDelivery(false);
-      return;
-    }
-    setIsPickup(false);
-    setIsDelivery(true);
+    setFulfillmentMethod(selected);
   };
 
   const handleOpenModal = (location?: any) => {
@@ -368,6 +355,9 @@ export default function LocationsPage() {
       const pickupEnabled = !!location.isPickup;
       const deliveryEnabled = !!location.isDelivery;
       const hasMethod = pickupEnabled || deliveryEnabled;
+      const selection = hasMethod
+        ? getFulfillmentSelection(pickupEnabled, deliveryEnabled)
+        : "pickup";
 
       setEditingLocation(location);
       setName(location.name);
@@ -375,8 +365,7 @@ export default function LocationsPage() {
       setCity(location.city || "");
       setZip(location.zip || "");
       setCountry(location.country || "");
-      setIsPickup(hasMethod ? pickupEnabled : true);
-      setIsDelivery(hasMethod ? deliveryEnabled : true);
+      setFulfillmentMethod(selection);
       setBusinessHours(location.businessHours || "{}");
       const pickupConditions = parseConditions(
         location.pickupActivationConditions,
@@ -475,8 +464,7 @@ export default function LocationsPage() {
       setCity("");
       setZip("");
       setCountry("");
-      setIsPickup(true);
-      setIsDelivery(false);
+      setFulfillmentMethod("pickup");
       setBusinessHours("{}");
       setPickupMinOrder("");
       setPickupMaxOrder("");
@@ -519,9 +507,10 @@ export default function LocationsPage() {
   };
 
   const handleSave = () => {
-    const hasMethodSelected = isPickup || isDelivery;
-    const pickupEnabled = hasMethodSelected ? isPickup : true;
-    const deliveryEnabled = hasMethodSelected ? isDelivery : true;
+    const pickupEnabled =
+      fulfillmentMethod === "pickup_delivery" || fulfillmentMethod === "pickup";
+    const deliveryEnabled =
+      fulfillmentMethod === "pickup_delivery" || fulfillmentMethod === "delivery";
 
     const formData = new FormData();
     formData.append("_action", editingLocation ? "update" : "create");
@@ -965,12 +954,12 @@ export default function LocationsPage() {
                 { label: "Pickup only", value: "pickup" },
                 { label: "Delivery only", value: "delivery" },
               ]}
-              value={fulfillmentSelection}
+              value={fulfillmentMethod}
               onChange={applyFulfillmentSelection}
               helpText="Choose which methods this location supports. At least one method is always required."
             />
 
-            {isPickup && (
+            {fulfillmentMethod !== "delivery" && (
               <BlockStack gap="200">
                 <Text as="h3" variant="headingSm">
                   Pickup Conditions
@@ -1010,7 +999,7 @@ export default function LocationsPage() {
               </BlockStack>
             )}
 
-            {isDelivery && (
+            {fulfillmentMethod !== "pickup" && (
               <BlockStack gap="200">
                 <Text as="h3" variant="headingSm">
                   Delivery Conditions
@@ -1117,7 +1106,7 @@ export default function LocationsPage() {
               )}
             </BlockStack>
 
-            {isPickup && (
+            {fulfillmentMethod !== "delivery" && (
               <div
                 style={{
                   border: "1px solid #e1e3e5",
@@ -1288,7 +1277,6 @@ export default function LocationsPage() {
                     onChange={setPickupPreparationDays}
                     autoComplete="off"
                     helpText="Days notice required"
-                    disabled={pickupNextWeekOnly}
                   />
                   <TextField
                     label="Max Days in Advance"
@@ -1296,7 +1284,6 @@ export default function LocationsPage() {
                     value={pickupMaxDaysInAdvance}
                     onChange={setPickupMaxDaysInAdvance}
                     autoComplete="off"
-                    disabled={pickupNextWeekOnly}
                   />
                 </InlineStack>
                 <InlineStack gap="300">
@@ -1335,7 +1322,7 @@ export default function LocationsPage() {
               </div>
             )}
 
-            {isDelivery && (
+            {fulfillmentMethod !== "pickup" && (
               <div
                 style={{
                   border: "1px solid #e1e3e5",

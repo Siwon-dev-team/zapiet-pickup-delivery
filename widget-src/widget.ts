@@ -49,6 +49,7 @@ interface Rate {
   locationId: string;
   name: string;
   type: 'PRICE' | 'WEIGHT';
+  method?: 'PICKUP' | 'DELIVERY' | 'BOTH' | string;
   min: number;
   max: number | null;
   price: number;
@@ -85,6 +86,13 @@ class ZapietWidget {
   private pickupDatePicker: any = null;
   private deliveryDatePicker: any = null;
   private isSetup = false;
+
+  private extractSortNumber(name: string): number | null {
+    const match = name.trim().match(/^(\d+)/);
+    if (!match) return null;
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
 
   constructor(rootId: string) {
     const rootElement = document.getElementById(rootId);
@@ -622,7 +630,19 @@ class ZapietWidget {
 
     locationList.innerHTML = '';
 
-    const pickupLocations = this.eligiblePickupLocations;
+    const pickupLocations = [...this.eligiblePickupLocations].sort((a, b) => {
+      const aOrder = this.extractSortNumber(a.name);
+      const bOrder = this.extractSortNumber(b.name);
+
+      if (aOrder !== null && bOrder !== null) {
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.name.localeCompare(b.name);
+      }
+
+      if (aOrder !== null) return -1;
+      if (bOrder !== null) return 1;
+      return a.name.localeCompare(b.name);
+    });
     if (pickupLocations.length === 0) return;
 
     pickupLocations.forEach((loc, index) => {
@@ -638,7 +658,7 @@ class ZapietWidget {
         <div class="zapiet-location-content">
           <span class="zapiet-radio-indicator"></span>
           <div class="zapiet-location-info">
-            <div class="zapiet-location-title">${String(index + 1).padStart(2, '0')}. ${businessHoursText}</div>
+            <div class="zapiet-location-title">${businessHoursText}</div>
             <div class="zapiet-location-address">${fullAddress}</div>
             <a class="zapiet-location-link" href="#" data-location="${loc.name}" data-address="${fullAddress}" data-hours="${loc.businessHours || 'Not specified'}">More information</a>
           </div>
@@ -695,17 +715,78 @@ class ZapietWidget {
 
       this.initPickupDatePicker(pickupDate, allowedDays, minDate, maxDate, location);
 
-      if (pickupDate.value) {
-          const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
-          if (dateAttr) dateAttr.value = pickupDate.value;
-          const timeSlotsForDay = this.getTimeSlotsForDay(location, true, pickupDate.value);
-          this.populateTimeSlots('zapiet-pickup-time', timeSlotsForDay);
-      }
+      const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
+      const timeAttr = document.getElementById('attr-time') as HTMLInputElement;
+      if (dateAttr) dateAttr.value = '';
+      if (timeAttr) timeAttr.value = '';
+      pickupDate.value = '';
     }
 
-    this.populateTimeSlots('zapiet-pickup-time');
-    this.calculatePickupRate(location.id, rates);
+    this.setupProgressivePickup(location, rates);
     this.updateCartAttributes();
+  }
+
+  private setupProgressivePickup(location: Location, rates: Rate[]): void {
+    const pickupDateField = this.getRootElement<HTMLInputElement>('#zapiet-pickup-date');
+    const pickupTimeField = this.getRootElement<HTMLSelectElement>('#zapiet-pickup-time');
+    const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-pickup-rate');
+
+    if (!pickupDateField || !pickupTimeField) return;
+
+    if (pickupDateField.parentElement) {
+      pickupDateField.parentElement.style.display = 'flex';
+    }
+    if (pickupTimeField.parentElement) {
+      pickupTimeField.parentElement.style.display = 'none';
+    }
+    if (rateDisplay) {
+      rateDisplay.style.display = 'none';
+    }
+
+    this.populateTimeSlots('zapiet-pickup-time', []);
+
+    pickupDateField.onchange = () => {
+      const dateAttr = document.getElementById('attr-date') as HTMLInputElement;
+      const timeAttr = document.getElementById('attr-time') as HTMLInputElement;
+
+      if (dateAttr) dateAttr.value = pickupDateField.value || '';
+      if (timeAttr) timeAttr.value = '';
+      pickupTimeField.value = '';
+
+      if (!pickupDateField.value) {
+        if (pickupTimeField.parentElement) pickupTimeField.parentElement.style.display = 'none';
+        if (rateDisplay) rateDisplay.style.display = 'none';
+        this.updateCartAttributes();
+        return;
+      }
+
+      const timeSlotsForDay = this.getTimeSlotsForDay(location, true, pickupDateField.value);
+      this.populateTimeSlots('zapiet-pickup-time', timeSlotsForDay);
+
+      if (pickupTimeField.parentElement) {
+        pickupTimeField.parentElement.style.display = 'flex';
+      }
+      if (rateDisplay) {
+        rateDisplay.style.display = 'none';
+      }
+
+      this.updateCartAttributes();
+    };
+
+    pickupTimeField.onchange = () => {
+      const timeAttr = document.getElementById('attr-time') as HTMLInputElement;
+      if (timeAttr) timeAttr.value = pickupTimeField.value || '';
+
+      if (!pickupTimeField.value) {
+        if (rateDisplay) rateDisplay.style.display = 'none';
+        this.updateCartAttributes();
+        return;
+      }
+
+      this.calculatePickupRate(location.id, rates);
+      if (rateDisplay) rateDisplay.style.display = 'block';
+      this.updateCartAttributes();
+    };
   }
 
   private formatBusinessHours(hours: string, locationName: string): string {
@@ -822,7 +903,11 @@ class ZapietWidget {
   }
 
   private calculatePickupRate(locationId: string, rates: Rate[]): void {
-    const pickupRates = rates.filter(r => r.locationId === locationId);
+    const pickupRates = rates.filter(
+      (r) =>
+        r.locationId === locationId &&
+        (r.method === 'PICKUP' || r.method === 'BOTH' || !r.method),
+    );
     const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-pickup-rate');
     if (!rateDisplay || !this.data) return;
 
@@ -892,9 +977,20 @@ class ZapietWidget {
     const isValid = matchingLocations.length > 0;
 
     if (isValid) {
+      if (this.cartTotal < 50) {
+        resultDiv.innerHTML = '<div class="zapiet-error-msg"><svg class="zapiet-icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>Minimum order for delivery is $50.00. Current: $' + this.cartTotal.toFixed(2) + '.</div>';
+        this.deliveryLocationsForPostal = null;
+        this.hideDeliveryFields();
+        return;
+      }
+
       const deliveryRatesForLocations: Rate[] = [];
       matchingLocations.forEach((location) => {
-        const locationRates = data.rates.filter((rate) => rate.locationId === location.id);
+        const locationRates = data.rates.filter(
+          (rate) =>
+            rate.locationId === location.id &&
+            (rate.method === 'DELIVERY' || rate.method === 'BOTH' || !rate.method),
+        );
         deliveryRatesForLocations.push(...locationRates);
       });
 
@@ -1008,7 +1104,7 @@ class ZapietWidget {
 
     deliveryTimeField.addEventListener('change', () => {
       if (deliveryTimeField.value) {
-        this.calculateDeliveryRate(data);
+        this.calculateDeliveryRate();
         
         if (rateDisplay) {
           setTimeout(() => {
@@ -1048,40 +1144,22 @@ class ZapietWidget {
     });
   }
 
-  private calculateDeliveryRate(data: WidgetData): void {
-    const { rates } = data;
-    const deliveryLocations =
-      this.deliveryLocationsForPostal && this.deliveryLocationsForPostal.length > 0
-        ? this.deliveryLocationsForPostal
-        : this.eligibleDeliveryLocations;
-    const deliveryRates: Rate[] = [];
-
-    deliveryLocations.forEach(loc => {
-      const locRates = rates.filter(r => r.locationId === loc.id);
-      deliveryRates.push(...locRates);
-    });
-
+  private calculateDeliveryRate(): void {
     const rateDisplay = this.getRootElement<HTMLElement>('#zapiet-delivery-rate');
     if (!rateDisplay) return;
 
-    if (deliveryRates.length > 0) {
-      const applicableRate = this.getApplicableRate(deliveryRates);
-
-      if (applicableRate) {
-        const price = applicableRate.price === 0 ? 'FREE' : `$${applicableRate.price.toFixed(2)}`;
-        rateDisplay.innerHTML = `<strong>Delivery Rate:</strong> ${price}`;
-        rateDisplay.style.display = 'block';
-        this.setMethodAttribute(`Delivery|${applicableRate.price || 0}`);
-      } else {
-        const message = this.getRateThresholdMessage(deliveryRates, 'Delivery');
-        rateDisplay.innerHTML = `<div class="zapiet-error-msg">${message}</div>`;
-        rateDisplay.style.display = 'block';
-        this.setMethodAttribute('Delivery');
-      }
-    } else {
-      rateDisplay.style.display = 'none';
-      this.setMethodAttribute('Delivery|0');
+    if (this.cartTotal < 50) {
+      rateDisplay.innerHTML = `<div class="zapiet-error-msg">Minimum order for delivery is $50.00. Current: $${this.cartTotal.toFixed(2)}.</div>`;
+      rateDisplay.style.display = 'block';
+      this.setMethodAttribute('Delivery');
+      return;
     }
+
+    const fixedPrice = this.cartTotal < 150 ? 10 : 0;
+    const price = fixedPrice === 0 ? 'FREE' : `$${fixedPrice.toFixed(2)}`;
+    rateDisplay.innerHTML = `<strong>Delivery Rate:</strong> ${price}`;
+    rateDisplay.style.display = 'block';
+    this.setMethodAttribute(`Delivery|${fixedPrice}`);
   }
 
   private setupCardSwitching(): void {
@@ -1281,26 +1359,9 @@ class ZapietWidget {
     } catch (_) {}
     (window as any).zapietPendingAttributes = attributes;
 
-    if (this.isInsideCartDrawer()) {
-      document.dispatchEvent(new CustomEvent('zapiet:cart-updated', { detail: attributes }));
-      return;
-    }
-
-    try {
-      (window as any).zapietOwnCartUpdate = true;
-      const response = await fetch('/cart/update.js', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attributes }),
-      });
-      setTimeout(() => { (window as any).zapietOwnCartUpdate = false; }, 2000);
-      if (response.ok) {
-        document.dispatchEvent(new CustomEvent('zapiet:cart-updated', { detail: attributes }));
-      }
-    } catch (error) {
-      setTimeout(() => { (window as any).zapietOwnCartUpdate = false; }, 2000);
-      console.error('Error updating cart attributes:', error);
-    }
+    (window as any).zapietOwnCartUpdate = true;
+    setTimeout(() => { (window as any).zapietOwnCartUpdate = false; }, 1500);
+    document.dispatchEvent(new CustomEvent('zapiet:cart-updated', { detail: attributes }));
   }
 }
 

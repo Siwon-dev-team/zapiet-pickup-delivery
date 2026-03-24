@@ -75,6 +75,7 @@ model Rate {
   locationId String
   name       String
   type       String
+  method     String   @default("BOTH")
   min        Float
   max        Float?
   price      Float
