@@ -29,7 +29,7 @@ api_version = "2024-04"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,read_orders,write_orders,read_locations,read_shipping,write_shipping,read_customers"
+scopes = "write_products,read_orders,write_orders,read_locations,read_shipping,write_shipping,read_customers,read_delivery_customizations,write_delivery_customizations"
 
 [auth]
 redirect_urls = [ "https://judicial-specialized-mardi-edgar.trycloudflare.com/api/auth" ]

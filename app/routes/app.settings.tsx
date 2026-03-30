@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation, useActionData } from "@remix-run/react";
+import { useLoaderData, Form, useNavigation, useActionData, useFetcher } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -11,13 +11,47 @@ import {
   Divider,
   Banner,
   Select,
+  Button,
+  InlineStack,
 } from "@shopify/polaris";
 import { useState } from "react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
+const ZAPIET_DELIVERY_CUSTOMIZATION_TITLE = "Zapiet Delivery Customization";
+
+async function getDeliveryFunctionId(admin: any): Promise<string | null> {
+  try {
+    const response = await admin.graphql(
+      `#graphql
+      query ZapietDeliveryFunctions {
+        shopifyFunctions(first: 100) {
+          nodes {
+            id
+            title
+            apiType
+          }
+        }
+      }`,
+    );
+    const data = await response.json();
+    const nodes = data?.data?.shopifyFunctions?.nodes || [];
+    const match = nodes.find(
+      (node: any) =>
+        String(node?.apiType || "").toUpperCase() === "DELIVERY_CUSTOMIZATION" &&
+        String(node?.title || "")
+          .toLowerCase()
+          .includes("zapiet"),
+    );
+    return match?.id || null;
+  } catch (error) {
+    console.error("Delivery function lookup failed:", error);
+    return null;
+  }
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = session.shop;
 
   let settings = await db.settings.findUnique({
@@ -54,12 +88,166 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
-  return json({ settings });
+  let customizationId: string | null = null;
+  let customizationEnabled = false;
+  let customizationTitle = ZAPIET_DELIVERY_CUSTOMIZATION_TITLE;
+
+  try {
+    const response = await admin.graphql(
+      `#graphql
+      query ZapietDeliveryCustomizationStatus {
+        deliveryCustomizations(first: 50) {
+          nodes {
+            id
+            title
+            enabled
+          }
+        }
+      }`,
+    );
+    const data = await response.json();
+    const nodes = data?.data?.deliveryCustomizations?.nodes || [];
+    const match = nodes.find(
+      (node: any) =>
+        String(node?.title || "").toLowerCase().includes("zapiet"),
+    );
+    if (match) {
+      customizationId = match.id;
+      customizationEnabled = !!match.enabled;
+      customizationTitle = match.title || customizationTitle;
+    }
+  } catch (error) {
+    console.error("Delivery customization status check failed:", error);
+  }
+
+  return json({
+    settings,
+    deliveryCustomization: {
+      id: customizationId,
+      enabled: customizationEnabled,
+      title: customizationTitle,
+    },
+  });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const formData = await request.formData();
+  const submittedAction = (formData.get("_action") as string) || "save_settings";
+
+  if (submittedAction === "toggle_delivery_customization") {
+    const desiredEnabled = formData.get("enabled") === "true";
+    const existingId = (formData.get("id") as string) || "";
+
+    try {
+      if (existingId) {
+        const updateResponse = await admin.graphql(
+          `#graphql
+          mutation ZapietDeliveryCustomizationUpdate($id: ID!, $enabled: Boolean!) {
+            deliveryCustomizationUpdate(id: $id, deliveryCustomization: { enabled: $enabled }) {
+              deliveryCustomization {
+                id
+                enabled
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }`,
+          {
+            variables: {
+              id: existingId,
+              enabled: desiredEnabled,
+            },
+          },
+        );
+
+        const updateData = await updateResponse.json();
+        const errors =
+          updateData?.data?.deliveryCustomizationUpdate?.userErrors || [];
+        if (errors.length > 0) {
+          return json(
+            { error: errors[0]?.message || "Failed to update delivery customization" },
+            { status: 400 },
+          );
+        }
+
+        return json({
+          success: true,
+          message: desiredEnabled
+            ? "Delivery customization enabled."
+            : "Delivery customization disabled.",
+        });
+      }
+
+      if (!desiredEnabled) {
+        return json({
+          success: true,
+          message: "Delivery customization is already disabled.",
+        });
+      }
+
+      const functionId = await getDeliveryFunctionId(admin);
+      if (!functionId) {
+        return json(
+          { error: "Zapiet delivery function was not found. Please deploy the app and try again." },
+          { status: 400 },
+        );
+      }
+
+      const createResponse = await admin.graphql(
+        `#graphql
+        mutation ZapietDeliveryCustomizationCreate($title: String!, $enabled: Boolean!, $functionId: String!) {
+          deliveryCustomizationCreate(deliveryCustomization: {
+            title: $title
+            enabled: $enabled
+            functionId: $functionId
+          }) {
+            deliveryCustomization {
+              id
+              enabled
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }`,
+        {
+          variables: {
+            title: ZAPIET_DELIVERY_CUSTOMIZATION_TITLE,
+            enabled: desiredEnabled,
+            functionId,
+          },
+        },
+      );
+
+      const createData = await createResponse.json();
+      const errors =
+        createData?.data?.deliveryCustomizationCreate?.userErrors || [];
+      if (errors.length > 0) {
+        return json(
+          { error: errors[0]?.message || "Failed to create delivery customization" },
+          { status: 400 },
+        );
+      }
+
+      return json({
+        success: true,
+        message: desiredEnabled
+          ? "Delivery customization enabled."
+          : "Delivery customization disabled.",
+      });
+    } catch (error: any) {
+      console.error("Delivery customization toggle failed:", error);
+      return json(
+        { error: error?.message || "Failed to toggle delivery customization" },
+        { status: 500 },
+      );
+    }
+  }
+
   const enableOrderNote = formData.get("enableOrderNote") === "on";
   
   const data = {
@@ -92,11 +280,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function SettingsPage() {
-  const { settings: settingsData } = useLoaderData<typeof loader>();
+  const { settings: settingsData, deliveryCustomization } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const customizationFetcher = useFetcher<{
+    success?: boolean;
+    message?: string;
+    error?: string;
+  }>();
   const settings = settingsData as any;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const isTogglingCustomization = customizationFetcher.state !== "idle";
 
   const [enablePickup, setEnablePickup] = useState(settings.enablePickup);
   const [enableDelivery, setEnableDelivery] = useState(settings.enableDelivery);
@@ -122,6 +316,16 @@ export default function SettingsPage() {
     if (form) form.requestSubmit();
   };
 
+  const handleToggleCustomization = (enabled: boolean) => {
+    const formData = new FormData();
+    formData.append("_action", "toggle_delivery_customization");
+    formData.append("enabled", String(enabled));
+    if (deliveryCustomization?.id) {
+      formData.append("id", deliveryCustomization.id);
+    }
+    customizationFetcher.submit(formData, { method: "post" });
+  };
+
   return (
     <Page 
       title="Settings"
@@ -133,13 +337,55 @@ export default function SettingsPage() {
     >
       <Form method="post">
         <Layout>
-          {actionData?.success && (
+          {actionData && "success" in actionData && actionData.success && (
             <Layout.Section>
               <Banner tone="success">
-                <p>{actionData.message}</p>
+                <p>{actionData.message || "Settings saved successfully."}</p>
               </Banner>
             </Layout.Section>
           )}
+          {customizationFetcher.data?.success && (
+            <Layout.Section>
+              <Banner tone="success">
+                <p>{customizationFetcher.data.message}</p>
+              </Banner>
+            </Layout.Section>
+          )}
+          {customizationFetcher.data?.error && (
+            <Layout.Section>
+              <Banner tone="critical">
+                <p>{customizationFetcher.data.error}</p>
+              </Banner>
+            </Layout.Section>
+          )}
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="300">
+                <Text as="h2" variant="headingMd">Checkout Delivery Customization</Text>
+                <Text as="p" tone="subdued">
+                  Status: {deliveryCustomization?.enabled ? "Enabled" : "Disabled"}
+                </Text>
+                <InlineStack gap="300">
+                  <Button
+                    variant="primary"
+                    onClick={() => handleToggleCustomization(true)}
+                    disabled={deliveryCustomization?.enabled || isTogglingCustomization}
+                    loading={isTogglingCustomization && !deliveryCustomization?.enabled}
+                  >
+                    Enable
+                  </Button>
+                  <Button
+                    tone="critical"
+                    onClick={() => handleToggleCustomization(false)}
+                    disabled={!deliveryCustomization?.enabled || isTogglingCustomization}
+                    loading={isTogglingCustomization && !!deliveryCustomization?.enabled}
+                  >
+                    Disable
+                  </Button>
+                </InlineStack>
+              </BlockStack>
+            </Card>
+          </Layout.Section>
           <Layout.Section>
             <Card>
               <BlockStack gap="500">
