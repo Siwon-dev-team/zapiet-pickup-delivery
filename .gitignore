@@ -15,3 +15,6 @@ build/
 .cache/
 
 .shopify/
+
+# Local named CLI config (secrets/client overrides); use shopify.app.toml in repo
+shopify.app.zapiet-pickup-delivery.toml

@@ -1,0 +1,19 @@
+services:
+  zapiet_pickup_delivery:
+    build:
+      context: .
+
+    ports:
+      - "3006:3000"
+    env_file:
+      - .env
+    environment:
+      SHOPIFY_APP_URL: "https://zapiet.spfmktplace.tech.siwon.ca"
+      SCOPES: "write_products,read_orders,write_orders,read_locations,read_shipping,write_shipping,read_customers,read_delivery_customizations,write_delivery_customizations"
+    volumes:
+      - ./prisma:/app/prisma
+      - ./build:/app/build
+      - ./public:/app/public
+      - ./node_modules/.prisma:/app/node_modules/.prisma
+      - ./node_modules/@prisma:/app/node_modules/@prisma
+    restart: unless-stopped
