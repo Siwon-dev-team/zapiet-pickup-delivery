@@ -17,11 +17,52 @@ import { TitleBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
+async function ensureCarrierService(admin: any): Promise<boolean> {
+  try {
+    const response = await admin.graphql(`
+      #graphql
+      query { carrierServices(first: 10) { edges { node { id name active callbackUrl } } } }
+    `);
+    const result = await response.json();
+    const services = result.data?.carrierServices?.edges?.map((e: any) => e.node) || [];
+    const ours = services.find((cs: any) => cs.name === "Zapiet Pickup & Delivery");
+
+    if (ours) return ours.active;
+
+    const appUrl = process.env.SHOPIFY_APP_URL || "";
+    if (!appUrl) return false;
+
+    const createResp = await admin.graphql(`
+      #graphql
+      mutation carrierServiceCreate($input: DeliveryCarrierServiceCreateInput!) {
+        carrierServiceCreate(input: $input) {
+          carrierService { id active }
+          userErrors { field message }
+        }
+      }
+    `, {
+      variables: {
+        input: {
+          name: "Zapiet Pickup & Delivery",
+          callbackUrl: `${appUrl}/api/carrier-service/rates`,
+          active: true,
+          supportsServiceDiscovery: true,
+        },
+      },
+    });
+    const createResult = await createResp.json();
+    return !!createResult.data?.carrierServiceCreate?.carrierService?.active;
+  } catch (e) {
+    console.error("Carrier service auto-setup failed:", e);
+    return false;
+  }
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const [locationsTotal, pickupLocations, deliveryLocations, ratesTotal, settings, recentLocations] =
+  const [locationsTotal, pickupLocations, deliveryLocations, ratesTotal, settings, recentLocations, carrierServiceActive] =
     await Promise.all([
       db.location.count({ where: { shop } }),
       db.location.count({ where: { shop, isPickup: true } }),
@@ -40,6 +81,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           updatedAt: true,
         },
       }),
+      ensureCarrierService(admin),
     ]);
 
   return json({
@@ -51,6 +93,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       ratesTotal,
       pickupEnabled: settings?.enablePickup ?? true,
       deliveryEnabled: settings?.enableDelivery ?? false,
+      carrierServiceActive,
     },
     recentLocations,
   });

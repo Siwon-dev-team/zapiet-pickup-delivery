@@ -192,21 +192,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     if (settings?.enableDelivery) {
       const customerPostal = body.rate.destination.postal_code?.toUpperCase().replace(/\s/g, "");
-      const deliveryLocations = locations.filter(loc => {
-        if (!loc.isDelivery) return false;
+
+      const allDeliveryLocs = locations.filter(loc => loc.isDelivery);
+      const anyLocationHasZones = allDeliveryLocs.some(loc => {
+        const c = parseActivationConditions(loc.deliveryActivationConditions);
+        return c.deliveryZones && c.deliveryZones.length > 0;
+      });
+
+      const validationMode = settings.postalCodeValidation || "none";
+      const effectiveMode = validationMode === "none" && anyLocationHasZones ? "partial" : validationMode;
+
+      const deliveryLocations = allDeliveryLocs.filter(loc => {
         const conditions = parseActivationConditions(loc.deliveryActivationConditions);
 
-        if (settings.postalCodeValidation === "none") return true;
+        if (effectiveMode === "none") return true;
 
         const deliveryZones = conditions.deliveryZones || [];
-        if (deliveryZones.length === 0) return true;
+        if (deliveryZones.length === 0) return !anyLocationHasZones;
 
-        if (settings.postalCodeValidation === "partial") {
+        if (effectiveMode === "partial") {
           const prefix = customerPostal?.substring(0, 3) || "";
           return deliveryZones.some(zone => zone.toUpperCase().substring(0, 3) === prefix);
         }
 
-        if (settings.postalCodeValidation === "full") {
+        if (effectiveMode === "full") {
           return deliveryZones.some(
             zone => zone.toUpperCase().replace(/\s/g, "") === customerPostal
           );

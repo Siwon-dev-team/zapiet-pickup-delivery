@@ -1,13 +1,9 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "19fd58c59819f294ed3dd0cbfeb38047"
-name = "zapiet-pickup-delivery"
+client_id = "b7173c2389e0200edf0d9a591334e456"
 application_url = "https://zapiet.spfmktplace.tech.siwon.ca"
 embedded = true
-
-[build]
-automatically_update_urls_on_dev = true
-include_config_on_deploy = true
+name = "zapiet-pickup-delivery"
 
 [webhooks]
 api_version = "2026-07"
@@ -24,17 +20,9 @@ api_version = "2026-07"
   uri = "/webhooks/app/scopes_update"
   topics = [ "app/scopes_update" ]
 
-  [[webhooks.subscriptions]]
-  uri = "/webhooks/app/orders_create"
-  topics = [ "orders/create" ]
-
-  [[webhooks.subscriptions]]
-  uri = "/webhooks/app/orders_updated"
-  topics = [ "orders/updated" ]
-
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,read_orders,write_orders,read_locations,read_shipping,write_shipping,read_customers,read_delivery_customizations,write_delivery_customizations"
+scopes = "read_customers,read_delivery_customizations,read_locations,read_orders,read_shipping,write_delivery_customizations,write_orders,write_products,write_shipping"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
@@ -42,7 +30,7 @@ use_legacy_install_flow = false
 redirect_urls = [
   "https://zapiet.spfmktplace.tech.siwon.ca/auth/callback",
   "https://zapiet.spfmktplace.tech.siwon.ca/auth/shopify/callback",
-  "https://zapiet.spfmktplace.tech.siwon.ca/api/auth/callback",
+  "https://zapiet.spfmktplace.tech.siwon.ca/api/auth/callback"
 ]
 
 [app_proxy]

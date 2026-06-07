@@ -1121,20 +1121,28 @@ class ZapietWidget {
     locations: Location[]
   ): Location[] {
     const validationMode = settings.postalCodeValidation || 'none';
-    if (validationMode === 'none') return locations;
+
+    const anyLocationHasZones = locations.some(location => {
+      const rules = this.parseActivationConditions(location.deliveryActivationConditions);
+      return rules.deliveryZones && rules.deliveryZones.length > 0;
+    });
+
+    if (validationMode === 'none' && !anyLocationHasZones) return locations;
+
+    const effectiveMode = validationMode === 'none' ? 'partial' : validationMode;
 
     return locations.filter(location => {
       const rules = this.parseActivationConditions(location.deliveryActivationConditions);
       if (!rules.deliveryZones || rules.deliveryZones.length === 0) {
-        return true;
+        return !anyLocationHasZones;
       }
 
-      if (validationMode === 'partial') {
+      if (effectiveMode === 'partial') {
         const prefix = postalCode.substring(0, 3);
         return rules.deliveryZones.some(zone => prefix === zone.toUpperCase().substring(0, 3));
       }
 
-      if (validationMode === 'full') {
+      if (effectiveMode === 'full') {
         return rules.deliveryZones.some(
           zone => postalCode === zone.toUpperCase().replace(/\s/g, '')
         );
