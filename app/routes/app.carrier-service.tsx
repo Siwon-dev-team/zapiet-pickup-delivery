@@ -1,5 +1,5 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation } from "@remix-run/react";
+import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { useLoaderData, useActionData, Form, useNavigation } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -63,122 +63,90 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const appUrl = process.env.SHOPIFY_APP_URL || "https://example.com";
   const callbackUrl = `${appUrl}/api/carrier-service/rates`;
 
-  if (action === "create") {
-    const mutation = `
-      #graphql
-      mutation carrierServiceCreate($input: DeliveryCarrierServiceCreateInput!) {
-        carrierServiceCreate(input: $input) {
-          carrierService {
-            id
-            name
-            active
-            callbackUrl
-          }
-          userErrors {
-            field
-            message
+  try {
+    if (action === "create") {
+      const response = await admin.graphql(`
+        #graphql
+        mutation carrierServiceCreate($input: DeliveryCarrierServiceCreateInput!) {
+          carrierServiceCreate(input: $input) {
+            carrierService { id name active callbackUrl }
+            userErrors { field message }
           }
         }
-      }
-    `;
-
-    const response = await admin.graphql(mutation, {
-      variables: {
-        input: {
-          name: "Zapiet Pickup & Delivery",
-          callbackUrl: callbackUrl,
-          active: true,
-          supportsServiceDiscovery: true,
+      `, {
+        variables: {
+          input: {
+            name: "Zapiet Pickup & Delivery",
+            callbackUrl,
+            active: true,
+            supportsServiceDiscovery: true,
+          },
         },
-      },
-    });
-
-    const result = await response.json();
-    
-    if (result.data?.carrierServiceCreate?.userErrors?.length > 0) {
-      return json({ 
-        success: false, 
-        errors: result.data.carrierServiceCreate.userErrors 
       });
+
+      const result = await response.json();
+      const userErrors = result.data?.carrierServiceCreate?.userErrors || [];
+
+      if (userErrors.length > 0) {
+        return json({ success: false, errors: userErrors });
+      }
+
+      return redirect("/app/carrier-service");
     }
 
-    return json({ success: true, action: "created" });
-  }
+    if (action === "update") {
+      const carrierId = formData.get("carrierId") as string;
+      const activeStatus = formData.get("active") === "true";
 
-  if (action === "update") {
-    const carrierId = formData.get("carrierId");
-    const activeStatus = formData.get("active") === "true";
-
-    const mutation = `
-      #graphql
-      mutation carrierServiceUpdate($id: ID!, $input: DeliveryCarrierServiceUpdateInput!) {
-        carrierServiceUpdate(id: $id, input: $input) {
-          carrierService {
-            id
-            name
-            active
-          }
-          userErrors {
-            field
-            message
+      const response = await admin.graphql(`
+        #graphql
+        mutation carrierServiceUpdate($id: ID!, $input: DeliveryCarrierServiceUpdateInput!) {
+          carrierServiceUpdate(id: $id, input: $input) {
+            carrierService { id name active }
+            userErrors { field message }
           }
         }
-      }
-    `;
-
-    const response = await admin.graphql(mutation, {
-      variables: {
-        id: carrierId,
-        input: {
-          active: activeStatus,
-        },
-      },
-    });
-
-    const result = await response.json();
-    
-    if (result.data?.carrierServiceUpdate?.userErrors?.length > 0) {
-      return json({ 
-        success: false, 
-        errors: result.data.carrierServiceUpdate.userErrors 
+      `, {
+        variables: { id: carrierId, input: { active: activeStatus } },
       });
+
+      const result = await response.json();
+      const userErrors = result.data?.carrierServiceUpdate?.userErrors || [];
+
+      if (userErrors.length > 0) {
+        return json({ success: false, errors: userErrors });
+      }
+
+      return redirect("/app/carrier-service");
     }
 
-    return json({ success: true, action: activeStatus ? "activated" : "deactivated" });
-  }
+    if (action === "delete") {
+      const carrierId = formData.get("carrierId") as string;
 
-  if (action === "delete") {
-    const carrierId = formData.get("carrierId");
-
-    const mutation = `
-      #graphql
-      mutation carrierServiceDelete($id: ID!) {
-        carrierServiceDelete(id: $id) {
-          deletedId
-          userErrors {
-            field
-            message
+      const response = await admin.graphql(`
+        #graphql
+        mutation carrierServiceDelete($id: ID!) {
+          carrierServiceDelete(id: $id) {
+            deletedId
+            userErrors { field message }
           }
         }
-      }
-    `;
-
-    const response = await admin.graphql(mutation, {
-      variables: {
-        id: carrierId,
-      },
-    });
-
-    const result = await response.json();
-    
-    if (result.data?.carrierServiceDelete?.userErrors?.length > 0) {
-      return json({ 
-        success: false, 
-        errors: result.data.carrierServiceDelete.userErrors 
+      `, {
+        variables: { id: carrierId },
       });
-    }
 
-    return json({ success: true, action: "deleted" });
+      const result = await response.json();
+      const userErrors = result.data?.carrierServiceDelete?.userErrors || [];
+
+      if (userErrors.length > 0) {
+        return json({ success: false, errors: userErrors });
+      }
+
+      return redirect("/app/carrier-service");
+    }
+  } catch (err: any) {
+    console.error("Carrier service action error:", err);
+    return json({ success: false, errors: [{ message: err.message || "Unexpected error" }] });
   }
 
   return json({ success: false, errors: [{ message: "Invalid action" }] });
@@ -186,6 +154,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function CarrierServicePage() {
   const { carrierService, allCarrierServices, appUrl } = useLoaderData<typeof loader>();
+  const actionData = useActionData<{ success?: boolean; errors?: Array<{ field?: string; message: string }> }>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
@@ -198,6 +167,16 @@ export default function CarrierServicePage() {
       backAction={{ url: "/app" }}
     >
       <Layout>
+        {actionData && !actionData.success && actionData.errors && (
+          <Layout.Section>
+            <Banner tone="critical" title="Error">
+              {actionData.errors.map((e, i) => (
+                <p key={i}>{e.field ? `${e.field}: ` : ""}{e.message}</p>
+              ))}
+            </Banner>
+          </Layout.Section>
+        )}
+
         <Layout.Section>
           <Banner tone="info">
             <p>
