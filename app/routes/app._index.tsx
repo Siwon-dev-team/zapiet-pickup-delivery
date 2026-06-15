@@ -197,7 +197,15 @@ export default function Index() {
                     <List.Item>Step 1: Add and configure locations.</List.Item>
                     <List.Item>Step 2: Create rate rules per location.</List.Item>
                     <List.Item>Step 3: Set widget behavior in Settings.</List.Item>
-                    <List.Item>Step 4: Enable app embed in your theme.</List.Item>
+                    <List.Item>
+                      Step 4:{" "}
+                      <Link
+                        url={`https://${shop}/admin/themes/current/editor?context=apps&activateAppId=f7994e20-db0d-d154-9e1b-9c2e5caec9e81a0d2ee3/app-embed`}
+                        target="_blank"
+                      >
+                        Enable app embed in your theme
+                      </Link>
+                    </List.Item>
                   </List>
                 </BlockStack>
               </Card>
