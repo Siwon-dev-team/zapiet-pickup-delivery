@@ -29,7 +29,6 @@ type RawOrderNode = {
   name: string;
   createdAt: string;
   displayFulfillmentStatus: string;
-  customer?: { displayName?: string | null } | null;
   customAttributes?: Array<{ key: string; value: string }>;
 };
 
@@ -55,9 +54,6 @@ const ORDER_QUERY = `#graphql
           name
           createdAt
           displayFulfillmentStatus
-          customer {
-            displayName
-          }
           customAttributes {
             key
             value
@@ -109,7 +105,7 @@ function mapOrderNode(node: RawOrderNode): RowOrder {
   return {
     id: node.id,
     name: node.name,
-    customer: node.customer?.displayName || "Guest",
+    customer: attributes.find((a) => a.key === "Customer")?.value || "-",
     date: new Date(node.createdAt).toLocaleDateString(),
     status: node.displayFulfillmentStatus,
     method,
