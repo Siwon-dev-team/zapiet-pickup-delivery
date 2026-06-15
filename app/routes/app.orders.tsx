@@ -137,22 +137,47 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     ? fulfillmentParam
     : "all";
 
-  const dayThreshold = toDayThreshold(daysFilter);
-  const { admin } = await authenticate.admin(request);
+  const emptyResult = (error: string) =>
+    json({ orders: [] as RowOrder[], error, filters: { days: daysFilter, fulfillment: fulfillmentFilter } });
 
+  let admin: Awaited<ReturnType<typeof authenticate.admin>>["admin"];
+  try {
+    const auth = await authenticate.admin(request);
+    admin = auth.admin;
+  } catch (err: unknown) {
+    if (err instanceof Response) throw err;
+    console.error("Orders auth error:", err);
+    return emptyResult("Authentication failed. Please reload the page.");
+  }
+
+  const dayThreshold = toDayThreshold(daysFilter);
   const collectedOrders: RowOrder[] = [];
   let afterCursor: string | null = null;
   let hasNextPage = true;
   let stopPagination = false;
   let loadError: string | null = null;
-  const MAX_PAGES = 8;
+  const MAX_PAGES = 5;
 
   try {
     for (let page = 0; page < MAX_PAGES && hasNextPage && !stopPagination; page++) {
       const response = await admin.graphql(ORDER_QUERY, {
         variables: { first: 50, after: afterCursor },
       });
-      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Orders API HTTP error:", response.status, response.statusText);
+        loadError = `Shopify API returned ${response.status}. Please reinstall the app if this persists.`;
+        break;
+      }
+
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        console.error("Orders: failed to parse API response");
+        loadError = "Invalid response from Shopify API.";
+        break;
+      }
 
       if (data.errors) {
         console.error("Orders GraphQL errors:", JSON.stringify(data.errors));
@@ -162,7 +187,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
       const connection = data?.data?.orders;
       if (!connection) {
-        loadError = "Unable to load orders. Please check app permissions.";
+        loadError = "Unable to load orders. The app may need additional permissions.";
         break;
       }
 
@@ -187,9 +212,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       hasNextPage = !!connection.pageInfo?.hasNextPage;
       afterCursor = connection.pageInfo?.endCursor || null;
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    if (err instanceof Response) throw err;
+    const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("Orders loader error:", err);
-    loadError = err.message || "Failed to load orders";
+    loadError = msg || "Failed to load orders";
   }
 
   return json({
