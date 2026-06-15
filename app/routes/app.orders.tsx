@@ -7,6 +7,7 @@ import {
   IndexTable,
   Text,
   Badge,
+  Banner,
   Button,
   Select,
   InlineStack,
@@ -143,38 +144,57 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let afterCursor: string | null = null;
   let hasNextPage = true;
   let stopPagination = false;
+  let loadError: string | null = null;
   const MAX_PAGES = 8;
 
-  for (let page = 0; page < MAX_PAGES && hasNextPage && !stopPagination; page++) {
-    const response = await admin.graphql(ORDER_QUERY, {
-      variables: { first: 250, after: afterCursor },
-    });
-    const data = await response.json();
-    const connection = data?.data?.orders;
-    const edges = connection?.edges || [];
+  try {
+    for (let page = 0; page < MAX_PAGES && hasNextPage && !stopPagination; page++) {
+      const response = await admin.graphql(ORDER_QUERY, {
+        variables: { first: 50, after: afterCursor },
+      });
+      const data = await response.json();
 
-    for (const edge of edges) {
-      const node = edge.node as RawOrderNode;
-      const createdAt = new Date(node.createdAt);
-
-      if (dayThreshold && createdAt < dayThreshold) {
-        stopPagination = true;
+      if (data.errors) {
+        console.error("Orders GraphQL errors:", JSON.stringify(data.errors));
+        loadError = data.errors.map((e: any) => e.message).join("; ");
         break;
       }
 
-      if (!matchesFulfillment(node.displayFulfillmentStatus, fulfillmentFilter)) {
-        continue;
+      const connection = data?.data?.orders;
+      if (!connection) {
+        loadError = "Unable to load orders. Please check app permissions.";
+        break;
       }
 
-      collectedOrders.push(mapOrderNode(node));
-    }
+      const edges = connection.edges || [];
 
-    hasNextPage = !!connection?.pageInfo?.hasNextPage;
-    afterCursor = connection?.pageInfo?.endCursor || null;
+      for (const edge of edges) {
+        const node = edge.node as RawOrderNode;
+        const createdAt = new Date(node.createdAt);
+
+        if (dayThreshold && createdAt < dayThreshold) {
+          stopPagination = true;
+          break;
+        }
+
+        if (!matchesFulfillment(node.displayFulfillmentStatus, fulfillmentFilter)) {
+          continue;
+        }
+
+        collectedOrders.push(mapOrderNode(node));
+      }
+
+      hasNextPage = !!connection.pageInfo?.hasNextPage;
+      afterCursor = connection.pageInfo?.endCursor || null;
+    }
+  } catch (err: any) {
+    console.error("Orders loader error:", err);
+    loadError = err.message || "Failed to load orders";
   }
 
   return json({
     orders: collectedOrders,
+    error: loadError,
     filters: {
       days: daysFilter,
       fulfillment: fulfillmentFilter,
@@ -183,7 +203,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function OrdersPage() {
-  const { orders, filters } = useLoaderData<typeof loader>();
+  const { orders, filters, error } = useLoaderData<typeof loader>();
   const [currentPage, setCurrentPage] = useState(1);
   const ORDERS_PER_PAGE = 50;
 
@@ -260,6 +280,13 @@ export default function OrdersPage() {
   return (
     <Page title="Store Orders">
       <Layout>
+        {error && (
+          <Layout.Section>
+            <Banner tone="critical" title="Could not load orders">
+              <p>{error}</p>
+            </Banner>
+          </Layout.Section>
+        )}
         <Layout.Section>
           <Card>
             <Form method="get">
